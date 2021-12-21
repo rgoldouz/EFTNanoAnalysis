@@ -1,0 +1,1 @@
+g++ -fPIC -fno-var-tracking -Wno-deprecated -D_GNU_SOURCE -O2  -I./include   -pthread -std=c++1z -m64 -I/cvmfs/cms.cern.ch/slc7_amd64_gcc820/cms/cmssw/CMSSW_10_4_0/external/slc7_amd64_gcc820/bin/../../../../../../../slc7_amd64_gcc820/lcg/root/6.12.07-ikaegh4/include   -c -o src/MyAnalysis.o src/MyAnalysis.cc

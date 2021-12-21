@@ -1,0 +1,182 @@
+0, 91, 91
+sm*sm=-1.361439
+1, 91, 91
+CTtbcm*sm=0.712456
+2, 91, 91
+CTtbcm*CTtbcm=0.041355
+3, 91, 91
+CTtsum*sm=1.845931
+4, 91, 91
+CTtsum*CTtbcm=0.238497
+5, 91, 91
+CTtsum*CTtsum=1.244357
+6, 91, 91
+CTtscm*sm=0.273709
+7, 91, 91
+CTtscm*CTtbcm=0.019544
+8, 91, 91
+CTtscm*CTtsum=-0.026530
+9, 91, 91
+CTtscm*CTtscm=0.003901
+10, 91, 91
+CTtdum*sm=1.426145
+11, 91, 91
+CTtdum*CTtbcm=-0.077439
+12, 91, 91
+CTtdum*CTtsum=-2.972909
+13, 91, 91
+CTtdum*CTtscm=0.155288
+14, 91, 91
+CTtdum*CTtdum=-23.675788
+15, 91, 91
+CTtbum*sm=0.904757
+16, 91, 91
+CTtbum*CTtbcm=0.145851
+17, 91, 91
+CTtbum*CTtsum=0.493242
+18, 91, 91
+CTtbum*CTtscm=-0.003097
+19, 91, 91
+CTtbum*CTtdum=-1.811407
+20, 91, 91
+CTtbum*CTtbum=-0.504727
+21, 91, 91
+CTtdcm*sm=1.846073
+22, 91, 91
+CTtdcm*CTtbcm=0.115002
+23, 91, 91
+CTtdcm*CTtsum=0.890653
+24, 91, 91
+CTtdcm*CTtscm=0.006640
+25, 91, 91
+CTtdcm*CTtdum=-2.369922
+26, 91, 91
+CTtdcm*CTtbum=0.244871
+27, 91, 91
+CTtdcm*CTtdcm=1.251425
+28, 91, 91
+CStdcm*sm=0.590839
+29, 91, 91
+CStdcm*CTtbcm=0.041245
+30, 91, 91
+CStdcm*CTtsum=0.389249
+31, 91, 91
+CStdcm*CTtscm=-0.039975
+32, 91, 91
+CStdcm*CTtdum=-8.346383
+33, 91, 91
+CStdcm*CTtbum=0.197845
+34, 91, 91
+CStdcm*CTtdcm=0.372972
+35, 91, 91
+CStdcm*CStdcm=1.451580
+36, 91, 91
+CStdum*sm=7.458323
+37, 91, 91
+CStdum*CTtbcm=-0.173872
+38, 91, 91
+CStdum*CTtsum=1.200913
+39, 91, 91
+CStdum*CTtscm=-0.354251
+40, 91, 91
+CStdum*CTtdum=90.755262
+41, 91, 91
+CStdum*CTtbum=-1.679896
+42, 91, 91
+CStdum*CTtdcm=3.942703
+43, 91, 91
+CStdum*CStdcm=-4.511636
+44, 91, 91
+CStdum*CStdum=-75.941015
+45, 91, 91
+CStscm*sm=0.077678
+46, 91, 91
+CStscm*CTtbcm=0.001476
+47, 91, 91
+CStscm*CTtsum=0.040721
+48, 91, 91
+CStscm*CTtscm=-0.011432
+49, 91, 91
+CStscm*CTtdum=0.281633
+50, 91, 91
+CStscm*CTtbum=0.008902
+51, 91, 91
+CStscm*CTtdcm=-0.083418
+52, 91, 91
+CStscm*CStdcm=-0.045248
+53, 91, 91
+CStscm*CStdum=-0.707519
+54, 91, 91
+CStscm*CStscm=0.017419
+55, 91, 91
+CStsum*sm=0.016017
+56, 91, 91
+CStsum*CTtbcm=0.028496
+57, 91, 91
+CStsum*CTtsum=-0.389072
+58, 91, 91
+CStsum*CTtscm=0.015929
+59, 91, 91
+CStsum*CTtdum=2.831029
+60, 91, 91
+CStsum*CTtbum=-0.932176
+61, 91, 91
+CStsum*CTtdcm=0.426811
+62, 91, 91
+CStsum*CStdcm=-0.054735
+63, 91, 91
+CStsum*CStdum=8.521482
+64, 91, 91
+CStsum*CStscm=0.056267
+65, 91, 91
+CStsum*CStsum=-0.731141
+66, 91, 91
+CStbum*sm=1.012021
+67, 91, 91
+CStbum*CTtbcm=0.045100
+68, 91, 91
+CStbum*CTtsum=0.104456
+69, 91, 91
+CStbum*CTtscm=-0.077949
+70, 91, 91
+CStbum*CTtdum=1.015717
+71, 91, 91
+CStbum*CTtbum=0.391979
+72, 91, 91
+CStbum*CTtdcm=0.079325
+73, 91, 91
+CStbum*CStdcm=1.057311
+74, 91, 91
+CStbum*CStdum=-0.312627
+75, 91, 91
+CStbum*CStscm=0.009189
+76, 91, 91
+CStbum*CStsum=-0.876592
+77, 91, 91
+CStbum*CStbum=-0.067488
+78, 91, 91
+CStbcm*sm=0.154831
+79, 91, 91
+CStbcm*CTtbcm=-0.009032
+80, 91, 91
+CStbcm*CTtsum=-0.005195
+81, 91, 91
+CStbcm*CTtscm=-0.009439
+82, 91, 91
+CStbcm*CTtdum=-0.316390
+83, 91, 91
+CStbcm*CTtbum=-0.048357
+84, 91, 91
+CStbcm*CTtdcm=-0.024999
+85, 91, 91
+CStbcm*CStdcm=0.111856
+86, 91, 91
+CStbcm*CStdum=-0.633880
+87, 91, 91
+CStbcm*CStscm=0.010385
+88, 91, 91
+CStbcm*CStsum=0.050949
+89, 91, 91
+CStbcm*CStbum=-0.005983
+90, 91, 91
+CStbcm*CStbcm=0.011052
