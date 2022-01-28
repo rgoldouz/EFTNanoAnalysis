@@ -4,9 +4,9 @@ ROOTGLIBS      = $(shell root-config --glibs)
 CORLIBS        = lib/libcorrectionlib.so
 CORFLAGS       = $(shell correction config --cflags)
 
-CVM            = /cvmfs/cms.cern.ch/slc7_amd64_gcc700/cms/cmssw/CMSSW_10_4_0/src/
+CVMA            = /cvmfs/cms.cern.ch/slc7_amd64_gcc820/cms/cmssw/CMSSW_10_4_0/src/
 BOOST          = /cvmfs/cms.cern.ch/slc7_amd64_gcc700/external/boost/1.67.0/include/
-INCLUDES       = -I./include -I$(BOOST) 
+INCLUDES       = -I./include -I$(BOOST) -I$(CVMA) 
 
 CXX            = g++ -m64
 CXXFLAGS       = -fPIC -fno-var-tracking -Wno-deprecated -D_GNU_SOURCE -O2  $(INCLUDES) 
@@ -42,7 +42,7 @@ $(LIB): $(OBJS)
 
 bin/RunAll : src/main.C  $(LIB)
 	mkdir -p bin
-	$(CXX) $(CXXFLAGS) -ldl -L./lib -lcorrectionlib -lEFTGenReaderEFTHelperUtilities -lmain src/main.C $(GLIBS) -o $@
+	$(CXX) $(CXXFLAGS) -ldl -L./lib -lCondFormatsJetMETObjects -lCondFormatsSerialization -lcorrectionlib -lEFTGenReaderEFTHelperUtilities -lmain src/main.C $(GLIBS) -o $@
 
 clean:
 	$(RM) $(OBJS)	

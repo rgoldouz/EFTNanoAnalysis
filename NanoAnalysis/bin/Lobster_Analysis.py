@@ -6,9 +6,10 @@ from lobster import cmssw
 from lobster.core import AdvancedOptions, Category, Config, MultiProductionDataset, StorageConfiguration, Workflow, Dataset,ParentDataset
 sys.path.append(os.path.abspath("."))
 import Files_2017_nano
+import Files_ULall_nano
 
 SAMPLES = {}
-SAMPLES.update(Files_2017_nano.UL17)
+SAMPLES.update(Files_ULall_nano.UL17)
 
 cmsswbase = os.environ['CMSSW_BASE']
 timestamp_tag = datetime.datetime.now().strftime('%Y%m%d_%H%M')
@@ -55,7 +56,7 @@ gs_resources = Category(
     name='gs',
     cores=1,
     memory=2000,
-    disk=10000
+    disk=3000
 )
 #################################################################
 wf = []
@@ -77,6 +78,8 @@ for key, value in SAMPLES.items():
             '../lib/libmain.so',
             '../lib/libcorrectionlib.so',
             '../lib/libEFTGenReaderEFTHelperUtilities.so',
+            '../lib/libCondFormatsJetMETObjects.so',
+            '../lib/libCondFormatsSerialization.so',
             '../include/MyAnalysis.h',
         ],
         outputs=['ANoutput.root'],

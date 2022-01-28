@@ -19,10 +19,10 @@ TGaxis.SetMaxDigits(2)
 num=['h2_BTaggingEff_Num_b', 'h2_BTaggingEff_Num_c', 'h2_BTaggingEff_Num_udsg']
 denom=['h2_BTaggingEff_Denom_b', 'h2_BTaggingEff_Denom_c', 'h2_BTaggingEff_Denom_udsg']
 Name = ['h2_BTaggingEff_b', 'h2_BTaggingEff_c', 'h2_BTaggingEff_udsg']
-HistAddress = '/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/hists/'
+HistAddress = '/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/input/'
 
-Samples = ['mc_2017.root','mc_2017.root','mc_2017.root']
-year = ['2016', '2017', '2018']
+Samples = ['mc_2016preVFP.root','mc_2016postVFP.root','mc_2017.root','mc_2018.root']
+year = ['2016preVFP', '2016postVFP', '2017', '2018']
 Hists = []
 
 for numyear, nameyear in enumerate(Samples):

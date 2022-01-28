@@ -247,18 +247,33 @@ HistAddress = '/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/'
 #            l1.append(h)
 #        l0.append(l1)
 #    Hists.append(l0)       
-
+variables=["lep1Pt","lep1Eta","lep1Phi","lep2Pt","lep2Eta","lep2Phi","llM","llPt","llDr","llDphi","jet1Pt","jet1Eta","jet1Phi","njet","nbjet","Met","MetPhi","nVtx","llMZw", "topMass","topL1Dphi","topL1Dr","topL1DptOsumPt","topPt"]
 FR = ROOT.TFile.Open(HistAddress + 'ANoutput.root')
-print HistAddress + 'ANoutput.root'
-HEFT = FR.Get("crossSection")
-HEFT.GetSumFit().save('Coup.tex')
-text = 'EFTrwgt1_cS_1_cT_1'
-wc1 = ROOT.WCPoint(text)
-HEFT.Scale(wc1)
-print str(HEFT.Integral())
-canvas = ROOT.TCanvas('a','a',50,50,865,780)
-HEFT.Draw()
-canvas.Print("BNV.png")
+for H in variables:
+    HEFT = FR.Get('ee_llB1_'+H)
+    text = 'EFTrwgt1_cS_1_cT_1'
+    wc1 = ROOT.WCPoint(text)
+    HEFT.Scale(wc1)
+    canvas = ROOT.TCanvas('a','a',50,50,865,780)
+    HEFT.Draw()
+    canvas.Print(H+"BNV.png")
+
+
+#FR = ROOT.TFile.Open(HistAddress + 'ANoutput.root')
+#print HistAddress + 'ANoutput.root'
+#HEFT = FR.Get("crossSection")
+#HEFT.GetSumFit().save('Coup.tex')
+#text = 'EFTrwgt1_cS_1_cT_1'
+#wc1 = ROOT.WCPoint(text)
+#HEFT.Scale(wc1)
+#print str(HEFT.Integral())
+#canvas = ROOT.TCanvas('a','a',50,50,865,780)
+#HEFT.Draw()
+#canvas.Print("BNV.png")
+
+
+
+
 #canvas = ROOT.TCanvas('a','a',50,50,865,780)
 #A=FR.Get("l1Pt")
 ##A.Draw()

@@ -40,5 +40,7 @@ std::vector<bool> parsePhotonVIDCuts(int bitMap, int cutLevel);
 //float scale_factor( TH2F* h, float X, float Y , TString uncert);
 float scale_factor( TH2F* h, float X, float Y , TString uncert,bool, bool);
 float topPt(float pt);
+TLorentzVector Wneutrino(double MET, double METphi, double leptonPT, double leptonEta, double leptonPhi);
+
 
 #endif

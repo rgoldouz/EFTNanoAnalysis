@@ -114,15 +114,35 @@ float scale_factor( TH2F* h, float X, float Y , TString uncert, bool eff=false, 
   if(uncert=="central") return  h->GetBinContent(binx, biny);
 }
 
-
-
-
-
-
-
 float topPt(float pt){
   return (0.973 - (0.000134 * pt) + (0.103 * exp(pt * (-0.0118))));
 }
 
-
+  TLorentzVector Wneutrino(double MET, double METphi, double leptonPT, double leptonEta, double leptonPhi) {
+    double mW=80.4;
+    double neutrinoPX=0;
+    double neutrinoPY=0;
+    double neutrinoPZ=0;
+    TLorentzVector lepton;
+    lepton.SetPtEtaPhiM(leptonPT, leptonEta, leptonPhi, 0);
+    double leptonPZ=lepton.Pz();
+    double mu=(std::pow(mW,2)/2)+std::cos(deltaPhi(METphi,leptonPhi))*MET*leptonPT;
+    double determinant = (std::pow(mu,2)*std::pow(leptonPZ,2)/std::pow(leptonPT,4))-(std::pow(MET,2)*(std::pow(leptonPT,2)+std::pow(leptonPZ,2))-std::pow(mu,2))/std::pow(leptonPT,2);
+    if (determinant<0){
+      MET=(1.+std::cos(deltaPhi(METphi,leptonPhi)))*std::pow(mW,2)/(2*leptonPT*std::pow(std::sin(deltaPhi(METphi,leptonPhi)),2));
+      mu=(std::pow(mW,2)/2)+std::cos(deltaPhi(METphi,leptonPhi))*MET*leptonPT;
+      determinant=0.;
+    }
+    double neutrinoPZplus=(mu*leptonPZ/std::pow(leptonPT,2))+std::sqrt(determinant);
+    double neutrinoPZminus=(mu*leptonPZ/std::pow(leptonPT,2))-std::sqrt(determinant);
+    neutrinoPZ=neutrinoPZminus;
+    if(std::fabs(neutrinoPZplus)<std::fabs(neutrinoPZminus)){
+      neutrinoPZ=neutrinoPZplus;
+    }
+    neutrinoPX=MET*std::cos(METphi);
+    neutrinoPY=MET*std::sin(METphi);
+    TLorentzVector neutrino;
+    neutrino.SetPxPyPzE(neutrinoPX,neutrinoPY,neutrinoPZ,std::sqrt(std::pow(neutrinoPX,2)+std::pow(neutrinoPY,2)+std::pow(neutrinoPZ,2)));
+    return  neutrino;
+  }
 
