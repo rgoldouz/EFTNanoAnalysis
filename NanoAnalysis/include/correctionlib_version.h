@@ -4,9 +4,9 @@
 #include <string_view>
 
 namespace correction {
-  constexpr std::string_view correctionlib_version{"v2.0.0-7-g8ac6652"};
-  constexpr int correctionlib_major_version{2};
-  constexpr int correctionlib_minor_version{0};
+  constexpr std::string_view correctionlib_version{""};
+  constexpr int correctionlib_major_version{};
+  constexpr int correctionlib_minor_version{};
 };
 
 #endif // CORRECTIONLIB_VERSION_H

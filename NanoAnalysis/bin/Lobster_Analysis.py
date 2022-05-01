@@ -16,7 +16,7 @@ timestamp_tag = datetime.datetime.now().strftime('%Y%m%d_%H%M')
 
 username = "rgoldouz"
 
-production_tag = "TOPBNVAnalysis"            # For 'full_production' setup
+production_tag = "AnalysisTOPBNV"            # For 'full_production' setup
 
 # Only run over lhe steps from specific processes/coeffs/runs
 process_whitelist = []
@@ -33,8 +33,8 @@ plotdir_path = "~/www/lobster/FullProduction/%s" % (production_tag)
 
 storage = StorageConfiguration(
     input=[
-        "file:///hadoop" + input_path,
-        "root://deepthought.crc.nd.edu/" + input_path,  # Note the extra slash after the hostname!
+    "hdfs://eddie.crc.nd.edu:19000"  + input_path,
+    "root://deepthought.crc.nd.edu/" + input_path
     ],
     output=[
         "hdfs://eddie.crc.nd.edu:19000"  + output_path,
@@ -56,17 +56,20 @@ gs_resources = Category(
     name='gs',
     cores=1,
     memory=2000,
-    disk=3000
+    disk=10000
 )
 #################################################################
 wf = []
 for key, value in SAMPLES.items():
-#    if 'TTTo2L2Nu' not in key:
-#        continue
-    if (path.exists('/hadoop/store/user/rgoldouz/FullProduction/TOPBNVAnalysis/Analysis_' + key)):
+    FPT=1
+    if 'data' in key or 'BNV' in key:
+        FPT=2
+    if path.exists('/hadoop/store/user/rgoldouz/FullProduction/AnalysisTOPBNV/Analysis_' + key) and len(os.listdir('/hadoop/store/user/rgoldouz/FullProduction/AnalysisTOPBNV/Analysis_' + key))>0:
         continue
+    if path.exists('/hadoop/store/user/rgoldouz/FullProduction/AnalysisTOPBNV/Analysis_' + key):
+        os.system('rm -r '+ '/hadoop/store/user/rgoldouz/FullProduction/AnalysisTOPBNV/Analysis_' + key)
     print key
-#    if len(os.listdir('/hadoop/store/user/rgoldouz/FullProduction/TOPBNVAnalysis/Analysis_'+key))!=0:
+#    if len(os.listdir('/hadoop/store/user/rgoldouz/FullProduction/AnalysisTOPBNV/Analysis_'+key))!=0:
 #        continue
     Analysis = Workflow(
         label='Analysis_%s' % (key),
@@ -86,7 +89,7 @@ for key, value in SAMPLES.items():
         dataset=Dataset(
            files=value[0],
            patterns=["*.root"],
-           files_per_task =1
+           files_per_task =FPT
         ),
 #        merge_command='hadd @outputfiles @inputfiles',
 #        merge_size='2G',

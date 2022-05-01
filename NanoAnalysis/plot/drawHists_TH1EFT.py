@@ -218,7 +218,7 @@ def drawHistallW(A,AN, R, I, Xlabel):
 #variablesName=["All","leading lepton pt","sub-leading lepton pt","leading lepton eta","sub-leading lepton eta", "M(ll)","Dr(ll)","Dphi(ll)","Njet","leading jet pt","leading jet eta", "MET"]
 ##HistAddress = '/afs/crc.nd.edu/user/r/rgoldouz/BNV/analysis/hists/'
 
-HistAddress = '/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/'
+HistAddress = '/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/hists/'
 
 #couplingsName = [
 #'TDUE',
@@ -248,11 +248,12 @@ HistAddress = '/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/'
 #        l0.append(l1)
 #    Hists.append(l0)       
 variables=["lep1Pt","lep1Eta","lep1Phi","lep2Pt","lep2Eta","lep2Phi","llM","llPt","llDr","llDphi","jet1Pt","jet1Eta","jet1Phi","njet","nbjet","Met","MetPhi","nVtx","llMZw", "topMass","topL1Dphi","topL1Dr","topL1DptOsumPt","topPt"]
-FR = ROOT.TFile.Open(HistAddress + 'ANoutput.root')
+FR = ROOT.TFile.Open(HistAddress + '2017_BNV_TT_TBCE.root')
 for H in variables:
-    HEFT = FR.Get('ee_llB1_'+H)
-    text = 'EFTrwgt1_cS_1_cT_1'
+    HEFT = FR.Get('emu_llB1_'+H)
+    text = 'EFTrwgt1_cS_1_cT_10'
     wc1 = ROOT.WCPoint(text)
+    print str(HEFT.GetBinContent(0,wc1))
     HEFT.Scale(wc1)
     canvas = ROOT.TCanvas('a','a',50,50,865,780)
     HEFT.Draw()

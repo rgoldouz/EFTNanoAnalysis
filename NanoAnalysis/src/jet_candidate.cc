@@ -13,10 +13,10 @@ jet_candidate::jet_candidate(float pt_in, float eta_in, float phi_in, float M_in
 
 int jet_candidate::isb(float btag_in , TString year){
   int R = 0;
-  if (year == "2016preVFP" && btag_in > 0.6001) R=1;
-  if (year == "2016postVFP" && btag_in > 0.5847) R=1;
-  if (year == "2017" && btag_in > 0.4506) R=1;
-  if (year == "2018" && btag_in > 0.4168) R=1;
+  if (year == "2016preVFP" && btag_in > 0.25980) R=1;
+  if (year == "2016postVFP" && btag_in > 0.2489) R=1;
+  if (year == "2017" && btag_in > 0.3040) R=1;
+  if (year == "2018" && btag_in > 0.2783) R=1;
   return R;
 }
   
