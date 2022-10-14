@@ -55,15 +55,24 @@ storage = StorageConfiguration(
 gs_resources = Category(
     name='gs',
     cores=1,
-    memory=2000,
+    memory=8000,
     disk=10000
+)
+
+
+tt_resources = Category(
+    name='tt',
+    cores=1,
+    memory=12000,
+    disk=15000
 )
 #################################################################
 wf = []
 for key, value in SAMPLES.items():
     FPT=1
-    if 'data' in key or 'BNV' in key:
-        FPT=2
+    cat = gs_resources
+    if 'TTTo2L2Nu' in key or 'BNV' in key:
+        cat=tt_resources
     if path.exists('/hadoop/store/user/rgoldouz/FullProduction/AnalysisTOPBNV/Analysis_' + key) and len(os.listdir('/hadoop/store/user/rgoldouz/FullProduction/AnalysisTOPBNV/Analysis_' + key))>0:
         continue
     if path.exists('/hadoop/store/user/rgoldouz/FullProduction/AnalysisTOPBNV/Analysis_' + key):
@@ -93,7 +102,8 @@ for key, value in SAMPLES.items():
         ),
 #        merge_command='hadd @outputfiles @inputfiles',
 #        merge_size='2G',
-        category=gs_resources
+#        category=gs_resources
+        category=cat
     )
     wf.append(Analysis)
 

@@ -11,7 +11,30 @@
 #include <TROOT.h>
 #include <TChain.h>
 #include <TFile.h>
-
+#include<vector>
+#include "TRandom.h"
+#include "TRandom3.h"
+#include <TH2.h>
+#include <TStyle.h>
+#include <TCanvas.h>
+#include <TRandom3.h>
+#include <TLorentzVector.h>
+#include <time.h>
+#include <iostream>
+#include <cmath>
+#include <vector>
+#include <memory>
+#include <TLorentzVector.h>
+#include "TMVA/Tools.h"
+#include "TMVA/Reader.h"
+#include "TMVA/MethodCuts.h"
+#include <iostream>
+#include <map>
+#include <string>
+#include <bitset>
+#include <TH1F.h>
+#include <chrono>
+#include <TH1EFT.h>
 // Header file for the classes stored in the TTree if any.
 using namespace std;
 class MyAnalysis {
@@ -3398,7 +3421,22 @@ public :
    virtual Long64_t LoadTree(Long64_t entry);
    virtual void     Init(TTree *tree);
    virtual void     Loop(TString fname, TString data, TString dataset ,string year, TString run, float xs, float lumi, float Nevent, int iseft, int nRuns);
-//   virtual void     Loop(TString, TString, TString, TString, TString, TString, float,float,float);
+   typedef vector<TH1EFT*> Dim1;
+   typedef vector<Dim1> Dim2;
+   typedef vector<Dim2> Dim3;
+   typedef vector<Dim3> Dim4;
+   typedef vector< vector < vector < vector< TH1EFT* > > > > D4HistsContainer;
+   typedef vector< vector < vector < TH1EFT* > > > D3HistsContainer;
+   D3HistsContainer Hists;
+   D4HistsContainer HistsSysUp;
+   D4HistsContainer HistsSysDown;
+   D4HistsContainer HistsJecUp;
+   D4HistsContainer HistsJecDown;
+   D4HistsContainer HistsSysReweightsQscale;
+   D4HistsContainer HistsSysReweightsPDF;
+   D4HistsContainer HistsSysReweightsPS;
+   void FillD3Hists(D3HistsContainer H3, int v1, std::vector<int> v2, int v3, float value, std::vector<float> weight, std::vector<WCFit>);
+   void FillD4Hists(D4HistsContainer H4, int v1, std::vector<int> v2, int v3, int v4, float value, std::vector<float> weight, std::vector<WCFit>);
    virtual Bool_t   Notify();
    virtual void     Show(Long64_t entry = -1);
 };

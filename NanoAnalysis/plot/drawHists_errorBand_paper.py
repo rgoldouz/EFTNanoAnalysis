@@ -28,7 +28,8 @@ leptonPTbins = array( 'd',[0,25,50,75,100,125,150,175, 200, 250, 300, 350, 400, 
 #bins = array( 'd',[-0.4,-0.25,-0.2,-0.15,-0.1,-0.05,0,0.05,0.1,0.15,0.2,0.25,0.35,0.6] )
 BDTmin=-1
 BDTmax=1
-Blinded=True
+Blinded=False
+
 def EFTtoNormal(H, wc):
     hpx    = ROOT.TH1F( H.GetName(), H.GetName(), H.GetXaxis().GetNbins(), H.GetXaxis().GetXmin(),H.GetXaxis().GetXmax() )
     r=1
@@ -473,19 +474,20 @@ def stackPlotsError(hists, SignalHists,error, errorRatio, Fnames, ch = "channel"
 
 #year=['2016','2017','2018','All']
 year=['2016preVFP', '2016postVFP', '2017','2018', 'All']
+#year=['2016postVFP']
 LumiErr = [0.038, 0.038, 0.038, 0.038, 0.038]
 #regions=["ll","llOffZ","llB1", "llBg1"]
 regions=["llB1", "llBg1"]
 regionsName=["1 b-tag", "$>$ 1 b-tag"]
-channels=["ee", "emu", "mumu"];
+channels=["ee", "emu", "mumu", "ll"];
 variables=["lep1Pt","lep1Eta","lep1Phi","lep2Pt","lep2Eta","lep2Phi","llM","llPt","llDr","llDphi","jet1Pt","jet1Eta","jet1Phi","njet","nbjet","Met","MetPhi","nVtx","llMZw", "topMass","topL1Dphi","topL1Dr","topL1DptOsumPt","topPt", "BDT"]
-#variables=["BDT"]
+variables=["BDT"]
 variablesName=["p_{T}(leading lepton)","#eta(leading lepton)","#Phi(leading lepton)","p_{T}(sub-leading lepton)","#eta(sub-leading lepton)","#Phi(sub-leading lepton)","M(ll)","p_{T}(ll)","#Delta R(ll)","#Delta #Phi(ll)","p_{T}(leading jet)","#eta(leading jet)","#Phi(leading jet)","Number of jets","Number of b-tagged jets","MET","#Phi(MET)","Number of vertices", "M(ll) [z window]", "top mass", "#Delta #Phi(ll, top)", "#Delta R(ll, top)", "|pt_top - pt_l1|/(pt_top + pt_l1)", "p_{T}(top)", "BDT"]
-#variablesName=["BDT"]
-sys = ["eleRecoSf", "eleIDSf", "muIdIsoSf", "bcTagSf", "LTagSf","pu", "prefiring", "trigSF","jes", "jer","muonScale","electronScale","muonRes", "unclusMET", "bcTagSfUnCorr", "LTagSfUnCorr","JetPuID"
-]
+variablesName=["BDT"]
+sys = ["eleRecoSf", "eleIDSf", "muIdIsoSf", "bcTagSf", "LTagSf","pu", "prefiring", "trigSF","jes", "jer","muonScale","electronScale","muonRes", "unclusMET", "bcTagSfUnCorr", "LTagSfUnCorr","JetPuID"]
+sys = ["muonScale","electronScale","muonRes", "unclusMET"]
 
-#sys = ["jes", "jer","muonScale","electronScale","muonRes", "unclusMET"]
+#sys = ["jes", "jer","muonScale","electronScale","muonRes", "unclusMET","JetPuID"]
 #sys = ["eleRecoSf", "eleIDSf", "muIdSf", "muIsoSf", "bcTagSF", "udsgTagSF","pu", "prefiring", "trigSF", "jes", "jer","electronScale"]
 #sys = ["trigSF","eleRecoSf", "eleIDSf", "muIdSf", "muIsoSf", "unclusMET","muonScale","electronScale","muonRes"]
 HistAddress = '/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/hists/'
@@ -878,7 +880,7 @@ for numyear, nameyear in enumerate(year):
                 binwidth= array( 'f' )
                 bincenter= array( 'f' )
                 yvalue= array( 'f' )
-                yerrup= array( 'f',[] )
+                yerrup= array( 'f')
                 yerrdown= array( 'f' )
                 yvalueRatio= array( 'f' )
                 yerrupRatio= array( 'f' )
@@ -980,4 +982,7 @@ for numyear, nameyear in enumerate(year):
                     glistup.append(hup)
                     glistdown.append(hdown)
                 compareError(glistup,glistdown, sys, namech, namereg, nameyear,namevar,variablesName[numvar], 'Exp')
+
+
+
 

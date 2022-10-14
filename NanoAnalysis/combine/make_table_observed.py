@@ -41,11 +41,11 @@ for numyear, nameyear in enumerate(year):
     #For expected limits [$-1\sigma , +1\sigma$] and ($-2\sigma , +2\sigma$) ranges are shown.}\n'
     table += '\\label{R' + nameyear + '} \n'
     table += '\\resizebox{\\textwidth}{!}{ \n'
-    table += '\\begin{tabular}{|l|l|l|l|l|l|l|l|l|l|l|}' + "\n"
+    table += '\\begin{tabular}{|l|l|l|l|l|l|l|l|l|l|}' + "\n"
     table += '\\hline' + "\n"
-    table += 'Year & operator  &$\mu$ & $\mu$  & $C_y^x$ & $C_y^x$  & $BR_y^x \\times 10^{-6}$ & $BR_y^x \\times 10^{-6}$ '
+    table += ' operator  &$\mu$ & $\mu$  & $C_y^x$ & $C_y^x$  & $BR_y^x \\times 10^{-6}$ & $BR_y^x \\times 10^{-6}$ '
     table += '\\\\' + "\n"
-    table += '     &         &Exp.               &Obs.&Exp.               &Obs.&Exp.               &Obs.'
+    table += '           &Exp.               &Obs.&Exp.               &Obs.&Exp.               &Obs.'
     table += '\\\\' + "\n"
     table += '\\hline' + "\n"
     for numquark, namequark in enumerate(quark):
@@ -55,7 +55,10 @@ for numyear, nameyear in enumerate(year):
 #                    os.system('rm -rf ' + '/hadoop/store/user/rgoldouz/FullProduction/LimitsTOPBNV/' + coup +'_T'+ namequark + nameintType+'_'+nameyear)
                 for fname in os.listdir('/hadoop/store/user/rgoldouz/FullProduction/LimitsTOPBNV/' + coup +'_T'+ namequark + nameintType+'_'+nameyear):
                     if 'impact' in fname:
-                        os.system('cp /hadoop/store/user/rgoldouz/FullProduction/LimitsTOPBNV/' + coup +'_T'+ namequark + nameintType+'_'+nameyear+'/'+fname + ' impacts/'+ coup +'_T'+ namequark + nameintType+'_'+nameyear+'_impacts.pdf')
+                        if '_Expected' in fname:
+                            os.system('cp /hadoop/store/user/rgoldouz/FullProduction/LimitsTOPBNV/' + coup +'_T'+ namequark + nameintType+'_'+nameyear+'/'+fname + ' impacts/'+ coup +'_T'+ namequark + nameintType+'_'+nameyear+'_Expected_impacts.pdf')
+                        if '_Observed' in fname:
+                            os.system('cp /hadoop/store/user/rgoldouz/FullProduction/LimitsTOPBNV/' + coup +'_T'+ namequark + nameintType+'_'+nameyear+'/'+fname + ' impacts/'+ coup +'_T'+ namequark + nameintType+'_'+nameyear+'_Observed_impacts.pdf')
                     if 'results' not in fname:
                         continue 
                     file1 = open('/hadoop/store/user/rgoldouz/FullProduction/LimitsTOPBNV/' + coup +'_T'+ namequark + nameintType+'_'+nameyear+'/'+fname, 'r') 
@@ -79,7 +82,11 @@ for numyear, nameyear in enumerate(year):
                             muP1 = float(line.split()[-1])/10.0
                         if 'Expected 97.5' in line:
                             muP2 = float(line.split()[-1])/10.0
-                    table += yearLatex[numyear] + ' & $' + CouplingsLatex[numcoup] + '^{t' + quarkLatex[numquark] + intTypeLatex[numintType] + '}$ & ' + '{:.3}'.format(mu) + ' & ' + '{:.3}'.format(0.00) + ' & ' +  '{:.3}'.format(math.sqrt(mu)) + ' & ' + '{:.3}'.format(0.00) + ' & ' + '{:.3}'.format(BR*mu)+ ' & ' + '{:.3}'.format(0.0) +  '     '
+                    table += ' $' + CouplingsLatex[numcoup] + '^{t' + quarkLatex[numquark] + intTypeLatex[numintType] + '}$ & ' + '{:.3}'.format(mu) + ' & ' + '{:.3}'.format(Obs) + ' & ' +  '{:.3}'.format(math.sqrt(mu)) + ' & ' + '{:.3}'.format(math.sqrt(Obs)) + ' & ' + '{:.3}'.format(BR*mu)+ ' & ' + '{:.3}'.format(BR*Obs) +  '    '
+                    table += '\\\\    ' + "\n"
+                    table +=  ' & [' + '{:.3}'.format(muM1) + ','+'{:.3}'.format(muP1) + '] & ' + ' & [' +  '{:.3}'.format(math.sqrt(muM1)) + ','+'{:.3}'.format(math.sqrt(muP1)) + '] & ' + ' & [' + '{:.3}'.format(BR*muM1)+ ','+'{:.3}'.format(BR*muP1) + '] & ' +  '    '
+                    table += '\\\\    ' + "\n"
+                    table +=  ' & (' + '{:.3}'.format(muM2) + ','+'{:.3}'.format(muP2) + ') & ' + ' & (' +  '{:.3}'.format(math.sqrt(muM2)) + ','+'{:.3}'.format(math.sqrt(muP2)) + ') & ' + ' & (' + '{:.3}'.format(BR*muM2)+ ','+'{:.3}'.format(BR*muP2) + ') & ' +  '     '
                     table += '\\\\    ' + "\n"
             table += '\hline' + "\n"
     table += '\\hline' + "\n"

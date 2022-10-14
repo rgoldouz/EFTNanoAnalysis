@@ -341,7 +341,6 @@ for f in range(len(SignalSamples)):
         SIG1Pdf=[]
         SIG1Qscale=[]
         sysfile = ROOT.TFile.Open(HistAddress + nameyear+ '_'+ SignalSamples[f]+'.root')
-        print '/hadoop/store/user/rgoldouz/NanoAodPostProcessingUL/UL' + nameyear[2:]+ '/v2/UL' + nameyear[2:]+ '_' + SignalSamples[f]
         SWscale, SWpdf =  SumofWeight('/hadoop/store/user/rgoldouz/NanoAodPostProcessingUL/UL' + nameyear[2:]+ '/v2/UL' + nameyear[2:]+ '_' + SignalSamples[f])
         for numch, namech in enumerate(channels):
             SIGChPdf=[]
@@ -703,6 +702,7 @@ SignalSamplesD['TDUMu']=['STBNV_TDUMu','TTBNV_TDUMu']
 SignalSamplesD['TSCMu']=['STBNV_TSCMu','TTBNV_TSCMu']
 SignalSamplesD['TSUMu']=['STBNV_TSUMu','TTBNV_TSUMu']
 
+scaleSignal = 0.1
 for namesig, valueD in SignalSamplesD.items():
     for numyear, nameyear in enumerate(year):
         for numch, namech in enumerate(channels):
@@ -723,7 +723,7 @@ for namesig, valueD in SignalSamplesD.items():
                      'process'.ljust(45) +'-1'.ljust(40) +'0'.ljust(40) + '1'.ljust(40) + '2'.ljust(40) + '3'.ljust(40) + '4'.ljust(40) +'\n'+\
                      'process'.ljust(45) +valueD[0].ljust(40) +valueD[1].ljust(40)+ SamplesNameCombined[1].ljust(40) + SamplesNameCombined[2].ljust(40) +\
                      SamplesNameCombined[3].ljust(40) + SamplesNameCombined[4].ljust(40) +'\n'+\
-                     'rate'.ljust(45) + str(Hists[numyear][Sid0][numch][numreg][0].Integral()/10.0).ljust(40) + str(Hists[numyear][Sid1][numch][numreg][0].Integral()/10.0).ljust(40) + str(Hists[numyear][1][numch][numreg][0].Integral()).ljust(40) + str(Hists[numyear][2][numch][numreg][0].Integral()).ljust(40)+\
+                     'rate'.ljust(45) + str(Hists[numyear][Sid0][numch][numreg][0].Integral()*scaleSignal).ljust(40) + str(Hists[numyear][Sid1][numch][numreg][0].Integral()*scaleSignal).ljust(40) + str(Hists[numyear][1][numch][numreg][0].Integral()).ljust(40) + str(Hists[numyear][2][numch][numreg][0].Integral()).ljust(40)+\
                      str(Hists[numyear][3][numch][numreg][0].Integral()).ljust(40) + str(Hists[numyear][4][numch][numreg][0].Integral()).ljust(40) + '\n'+\
                      '------------\n'+\
                      'Other_norm'.ljust(35)+'lnN'.ljust(10) + '-'.ljust(40) + '-'.ljust(40)  + '1.5'.ljust(40) + '-'.ljust(40) + '-'.ljust(40) + '-'.ljust(40) +'\n'+\

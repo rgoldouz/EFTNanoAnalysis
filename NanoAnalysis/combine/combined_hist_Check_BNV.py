@@ -120,7 +120,7 @@ regions=["llB1"]
 #nominalHists=['tt','LfvVectorEmutc', 'LfvVectorEmutu']
 #nominalHists=['LFVStVecU', 'LFVTtVecU','LFVStVecC', 'LFVTtVecC']
 nominalHists=['tt']
-#nominalHists=['STBNV']
+nominalHists=['STBNV']
 #for obj in my_list: # obj is TKey
 #    if obj.GetClassName() == "TH1F":
 #        Hists.append(obj.GetName())
@@ -136,11 +136,11 @@ for numyear, nameyear in enumerate(year):
             if obj.GetClassName() == "TH1F":
                 Hists.append(obj.GetName())
         for H in Hists:
-#`            print H
+            print H
             if 'Up' not in H and 'Down' not in H:
                 error = f1.Get(H)
-                for b in range(error.GetNbinsX()):
-                    print H + ' bin' + str(b+1) +':'+nameyear+ ':'+namereg+ ':'+ str(error.GetBinError(b+1)) +'/'+ str(error.GetBinContent(b+1))
+#                for b in range(error.GetNbinsX()):
+#                    print H + ' bin' + str(b+1) +':'+nameyear+ ':'+namereg+ ':'+ str(error.GetBinError(b+1)) +'/'+ str(error.GetBinContent(b+1))
 #                for b in range(error.GetNbinsX()):
 #                    if error.GetBinContent(b+1)==0:
  #                       continue
@@ -154,8 +154,8 @@ for numyear, nameyear in enumerate(year):
 #            print H
         #    print H[-2:]
             if H[-2:]=='Up':
-#                A1 = f1.Get(H.split('_')[0] + '_'+H.split('_')[1])
-                A1 = f1.Get(H.split('_')[0])
+                A1 = f1.Get(H.split('_')[0] + '_'+H.split('_')[1])
+#                A1 = f1.Get(H.split('_')[0])
                 A2 = f1.Get(H)
                 A3 = f1.Get(H[:-2]+'Down')
                 compare3Hist(A1,A2,A3,'nominal', 'Up','Down',nameyear + namereg+ H[:-2] ,nameyear + namereg+H[:-2])

@@ -41,8 +41,8 @@ def f(name):
         evtTree = fi.Get('Events')
         evtTree.SetBranchStatus("*", 0)
         evtTree.SetBranchStatus("genWeight", 1)
-        evtTree.SetBranchStatus("LHEWeight_originalXWGTUP", 1)
         if 'BNV' in name:
+            evtTree.SetBranchStatus("LHEWeight_originalXWGTUP", 1)
             for i in range( evtTree.GetEntries() ):
                 evtTree.GetEntry(i)
                 if evtTree.LHEWeight_originalXWGTUP not in nWeight:
@@ -83,6 +83,14 @@ if __name__ == '__main__':
     'TTJets': '831.76',
     'DY10to50': '18610',
     'DY50': '6077.22',
+    'DYM1500to2000': '0.002286',
+    'DYM2000to3000': '0.0005375',
+    'DYM500to700': '0.2446',
+    'DYM100to200': '226.6',
+    'DYM200to500': '8.1959',
+    'DYM800to1000': '0.0318',
+    'DYM1000to1500': '0.0202',
+    'DYM700to800': '0.0378',
     'WZTo2L2Q':'5.595',
     'ZZTo2L2Nu':'0.564',
     'TTZToLLNuNu_M_10':'0.2529',
@@ -99,7 +107,7 @@ if __name__ == '__main__':
     'ZZpythia': '16.523'
     }
     
-    blackList = ['ST_antitop_tchannel','ST_top_tchannel', 'ST_top_schannel', 'TTJets','fcnc', 'tbarW_Inclusive', 'tW_Inclusive', 'FCNC', 'WZTo', 'WWTo', 'ZZTo', 'TTG','pythia']
+    blackList = ['ST_antitop_tchannel','ST_top_tchannel', 'ST_top_schannel', 'TTJets','fcnc', 'tbarW_Inclusive', 'tW_Inclusive', 'FCNC', 'WZTo', 'WWTo', 'ZZTo', 'TTG','DY50madgraphMLM','DY50amcAtNLO']
     
     text = ''
     text += 'import sys \n'
@@ -124,6 +132,7 @@ if __name__ == '__main__':
             for S in blackList:
                 if S in key:
                     accept = False
+                    print 'sample ' + key + ' is in black list ans is not added!'
             if accept:
                 if 'data' in key:
                     a,b,c,d = key.split("_")   

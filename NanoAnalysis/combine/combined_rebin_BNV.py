@@ -167,8 +167,8 @@ for coup in couplings:
                         RF = Rebin(f1.Get(obj.GetName()),bins)
                         RF.SetName(obj.GetName())
                         for b in range(RF.GetNbinsX()):
-                            if RF.GetBinContent(b+1)<0:
-                                RF.SetBinContent(b+1,0)
+                            if RF.GetBinContent(b+1)<=0:
+                                RF.SetBinContent(b+1,0.00001)
                         if 'BNV' in obj.GetName():
                             RF.Scale(0.10)
                         RF.Write()

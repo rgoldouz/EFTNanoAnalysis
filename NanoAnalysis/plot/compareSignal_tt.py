@@ -89,7 +89,7 @@ def compareHists(hists,Fnames, ch = "channel", reg = "region", var="sample", var
         if 'BDT' in varname:
             hists[H].GetXaxis().SetRangeUser(BDTmin, BDTmax)
             hists[H].GetXaxis().SetRangeUser(BDTmin, BDTmax)
-        hists[H].Draw("histSAME")
+        hists[H].Draw("HISTSAME")
     hists[0].Draw("AXISSAMEY+")
     hists[0].Draw("AXISSAMEX+")
     pad1.Update()
@@ -175,13 +175,13 @@ for numyear, nameyear in enumerate(year):
                 for f in range(len(Samples)):
                     if 'ttbar' in Samples[f]:
                         wc1 = ROOT.WCPoint("EFTrwgt1_cS_1_cT_1")
-                        HH.append(EFTtoNormal(Hists[0][f][0][0][numvar],wc1))
+                        HH.append(EFTtoNormal(Hists[numyear][f][numch][numreg][numvar],wc1))
                         HHname.append(Samples[f][:-5])
                     else:
                         if namevar=='lep1Phi':
                             print Samples[f]+'_'+nameyear +'_'+namech +'_' + namereg+'_' +str(Hists[numyear][f][numch][numreg][numvar].Integral())
                         wc1 = ROOT.WCPoint("EFTrwgt1_cS_1_cT_1")
-                        HH.append(EFTtoNormal(Hists[0][f][numch][numreg][numvar],wc1))
+                        HH.append(EFTtoNormal(Hists[numyear][f][numch][numreg][numvar],wc1))
                         HHname.append(Samples[f][:-5] + "(S=1, T=1)")
                 compareHists(HH,HHname, nameyear +'_'+ namech +'_' + namereg, namereg,namevar,variablesName[numvar],"EFTrwgt1_cS_1_cT_1")
 

@@ -10,8 +10,8 @@ double dR(double eta1, double phi1, double eta2, double phi2){
 
 void displayProgress(long current, long max){
   using std::cerr;
-  if (max<5000) return;
-  if (current%(max/500)!=0 && current<max-1) return;
+  if (max<1000) return;
+  if (current%(max/100)!=0 && current<max-1) return;
 
   int width = 52; // Hope the terminal is at least that wide.
   int barWidth = width - 2;

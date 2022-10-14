@@ -230,12 +230,12 @@ def stackPlots(hists, SignalHists, Fnames, ch = "channel", reg = "region", year=
 
 #year=['2016','2017','2018','All']
 year=['2016preVFP', '2016postVFP', '2017','2018','All']
-#year=['2016preVFP']
+#year=['2017']
 regions=["ll","llOffZ","llB1", "llBg1"]
 #regions=["ll","llOffZ"]
 #regions=["ll","llB1", "llBg1"]
-regionsName=["2 leptons","M(ee/mumu)>106","1 b-tag", "$>$ 1 b-tag"]
-channels=["ee", "emu", "mumu"];
+regionsName=["2 leptons","$M_{\ell\ell}>106, MET>60$","1 b-tag", "$>$ 1 b-tag"]
+channels=["ee", "emu", "mumu","ll"];
 variables=["lep1Pt","lep1Eta","lep1Phi","lep2Pt","lep2Eta","lep2Phi","llM","llPt","llDr","llDphi","jet1Pt","jet1Eta","jet1Phi","njet","nbjet","Met","MetPhi","nVtx","llMZw", "topMass","topL1Dphi","topL1Dr","topL1DptOsumPt","topPt", "BDT"]
 #variables=["lep1Pt"]
 variablesName=["p_{T}(leading lepton)","#eta(leading lepton)","#Phi(leading lepton)","p_{T}(sub-leading lepton)","#eta(sub-leading lepton)","#Phi(sub-leading lepton)","M(ll)","p_{T}(ll)","#Delta R(ll)","#Delta #Phi(ll)","p_{T}(leading jet)","#eta(leading jet)","#Phi(leading jet)","Number of jets","Number of b-tagged jets","MET","#Phi(MET)","Number of vertices", "M(ll) [z window]", "top mass", "#Delta #Phi(ll, top)", "#Delta R(ll, top)", "|pt_top - pt_l1|/(pt_top + pt_l1)", "p_{T}(top)", "BDT"]
@@ -257,7 +257,7 @@ for numyear, nameyear in enumerate(year):
     for f in range(len(Samples)):
         l1=[]
         Files.append(ROOT.TFile.Open(HistAddress + nameyear+ '_' + Samples[f]))
-        print HistAddress + nameyear+ '_' + Samples[f]
+#        print HistAddress + nameyear+ '_' + Samples[f]
         for numch, namech in enumerate(channels):
             l2=[]
             for numreg, namereg in enumerate(regions):
@@ -265,9 +265,9 @@ for numyear, nameyear in enumerate(year):
                 for numvar, namevar in enumerate(variables):
                     h= Files[f].Get(namech + '_' + namereg + '_' + namevar)
 #                    print namevar + ":" + str(h.Integral())
-                    if 'njet' in namevar:
-                        print namech + '_' + namereg + '_' + namevar + str(h.GetBinFit(3).getDim())
-                        print namech + '_' + namereg + '_' + namevar + str(h.GetBinContent(3,wc1))
+#                    if 'njet' in namevar:
+#                        print namech + '_' + namereg + '_' + namevar + str(h.GetBinFit(3).getDim())
+#                        print namech + '_' + namereg + '_' + namevar + str(h.GetBinContent(3,wc1))
                     h.SetFillColor(colors[f])
                     h.SetLineColor(colors[f])
                     l3.append(h)

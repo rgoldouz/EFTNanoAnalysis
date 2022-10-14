@@ -6,7 +6,8 @@ CORFLAGS       = $(shell correction config --cflags)
 
 CVMA            = /cvmfs/cms.cern.ch/slc7_amd64_gcc820/cms/cmssw/CMSSW_10_4_0/src/
 BOOST          = /cvmfs/cms.cern.ch/slc7_amd64_gcc700/external/boost/1.67.0/include/
-INCLUDES       = -I./include -I$(BOOST) -I$(CVMA) 
+EFT            = /afs/crc.nd.edu/user/r/rgoldouz/CMSSW_10_4_0/src/EFTGenReader/EFTHelperUtilities/interface/
+INCLUDES       = -I./include -I$(EFT) -I$(BOOST) -I$(CVMA) 
 
 CXX            = g++ -m64
 CXXFLAGS       = -fPIC -fno-var-tracking -Wno-deprecated -D_GNU_SOURCE -O2  $(INCLUDES) 

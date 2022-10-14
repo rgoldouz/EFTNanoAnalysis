@@ -24,4 +24,16 @@ open(SHNAME1, 'wt').write(SHFILE1)
 #os.system("echo '" + SHFILE1+ "' > main.C && ls -l && cat main.C && root  -b -q -l main.so main.C && ls -l")
 #os.system('echo ' + SHFILE1+ ' > main.C && ls -l && cat main.C && root -l main.so main.C && ls -l')
 #os.system('cat main.C')
+with open("MyAnalysis.h", "r") as input:
+    with open("temp.txt", "w") as output:
+        # iterate all lines from file
+        for line in input:
+            # if substring contain in a line then don't write it
+            if "TH1EFT.h" not in line.strip("\n"):
+                output.write(line)
+
+# replace file with original name
+os.system('mv temp.txt MyAnalysis.h')
+
+
 os.system('root -b -q -l libCondFormatsJetMETObjects.so libcorrectionlib.so libEFTGenReaderEFTHelperUtilities.so libmain.so main.C')

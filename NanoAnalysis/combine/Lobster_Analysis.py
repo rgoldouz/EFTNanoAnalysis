@@ -76,6 +76,7 @@ for coup in Couplings:
             if path.exists('/hadoop/store/user/rgoldouz/FullProduction/LimitsTOPBNV/' + key) and len(os.listdir('/hadoop/store/user/rgoldouz/FullProduction/LimitsTOPBNV/' + key))>0:
                 continue
             print key
+            print 'python Lobster_check.py '  + coup +' ' + namesig +' ' +nameyear
             Analysis = Workflow(
                 label=key,
                 sandbox=cmssw.Sandbox(release='/afs/crc.nd.edu/user/r/rgoldouz/Limit_combined/forLobster/CMSSW_10_2_13'),
@@ -85,7 +86,7 @@ for coup in Couplings:
                     'Lobster_check.py',
                     'CombinedFilesBNV',
                 ],
-                outputs=[key+'_impacts.pdf', key+'_results.tex'],
+                outputs=[key+'_Observed_impacts.pdf', key+'_Expected_impacts.pdf', key+'_results.tex'],
                 dataset=EmptyDataset(),
                 category=gs_resources
             )

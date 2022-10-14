@@ -223,7 +223,7 @@ variablesName=["p_{T}(leading lepton)","#eta(leading lepton)","#Phi(leading lept
 
 HistAddress = '/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/hists/'
 
-Samples = ['data.root','WJets.root','other.root', 'DY.root', 'ttbar.root', 'tW.root', 'BNV_ST_TBUE.root', 'BNV_TT_TBUE.root']
+Samples = ['data.root','WJets.root','other.root', 'DY.root', 'ttbar.root', 'tW.root', 'STBNV_TBUE.root', 'TTBNV_TBUE.root']
 SamplesName = ['Data','Jets','Others', 'DY', 't#bar{t}', 'tW' , 'BNV_ST_TBUE', 'BNV_TT_TBUE']
 SamplesNameLatex = ['Data','Jets','Others', 'DY', 'tt', 'tW',  'LFV-vector(emutc)', 'LFV-vector(emutu)']
 
