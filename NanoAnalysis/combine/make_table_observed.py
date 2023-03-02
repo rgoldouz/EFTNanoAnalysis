@@ -56,7 +56,12 @@ for numyear, nameyear in enumerate(year):
                 for fname in os.listdir('/hadoop/store/user/rgoldouz/FullProduction/LimitsTOPBNV/' + coup +'_T'+ namequark + nameintType+'_'+nameyear):
                     if 'impact' in fname:
                         if '_Expected' in fname:
-                            os.system('cp /hadoop/store/user/rgoldouz/FullProduction/LimitsTOPBNV/' + coup +'_T'+ namequark + nameintType+'_'+nameyear+'/'+fname + ' impacts/'+ coup +'_T'+ namequark + nameintType+'_'+nameyear+'_Expected_impacts.pdf')
+#                            os.system('cp /hadoop/store/user/rgoldouz/FullProduction/LimitsTOPBNV/' + coup +'_T'+ namequark + nameintType+'_'+nameyear+'/'+fname + ' impacts/'+ coup +'_T'+ namequark + nameintType+'_'+nameyear+'_Expected_impacts.pdf')
+                            if 'mu0' in fname:
+                                os.system('cp /hadoop/store/user/rgoldouz/FullProduction/LimitsTOPBNV/' + coup +'_T'+ namequark + nameintType+'_'+nameyear+'/'+fname + ' impacts/'+ coup +'_T'+ namequark + nameintType+'_'+nameyear+'_Expected_mu0_impacts.pdf')
+                            if 'mu1' in fname:
+                                os.system('cp /hadoop/store/user/rgoldouz/FullProduction/LimitsTOPBNV/' + coup +'_T'+ namequark + nameintType+'_'+nameyear+'/'+fname + ' impacts/'+ coup +'_T'+ namequark + nameintType+'_'+nameyear+'_Expected_mu1_impacts.pdf')
+#                            os.system('cp /hadoop/store/user/rgoldouz/FullProduction/LimitsTOPBNV/' + coup +'_T'+ namequark + nameintType+'_'+nameyear+'/'+fname + ' impacts/' + fname.split('.')[0][:-2]+'.pdf')
                         if '_Observed' in fname:
                             os.system('cp /hadoop/store/user/rgoldouz/FullProduction/LimitsTOPBNV/' + coup +'_T'+ namequark + nameintType+'_'+nameyear+'/'+fname + ' impacts/'+ coup +'_T'+ namequark + nameintType+'_'+nameyear+'_Observed_impacts.pdf')
                     if 'results' not in fname:

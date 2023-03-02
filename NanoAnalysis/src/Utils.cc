@@ -1,4 +1,6 @@
 #include "Utils.h"
+#include "sys/types.h"
+#include "sys/sysinfo.h"
 
 double dR(double eta1, double phi1, double eta2, double phi2){
     double dphi = phi2 - phi1;
@@ -6,6 +8,31 @@ double dR(double eta1, double phi1, double eta2, double phi2){
     static const double pi = TMath::Pi();
     dphi = TMath::Abs( TMath::Abs(dphi) - pi ) - pi;
     return TMath::Sqrt( dphi*dphi + deta*deta );
+}
+
+int parseLine(char* line){
+    // This assumes that a digit will be found and the line ends in " Kb".
+    int i = strlen(line);
+    const char* p = line;
+    while (*p <'0' || *p > '9') p++;
+    line[i-3] = '\0';
+    i = atoi(p);
+    return i;
+}
+
+int getValue(){ //Note: this value is in KB!
+    FILE* file = fopen("/proc/self/status", "r");
+    int result = -1;
+    char line[128];
+
+    while (fgets(line, 128, file) != NULL){
+        if (strncmp(line, "VmRSS:", 6) == 0){
+            result = parseLine(line);
+            break;
+        }
+    }
+    fclose(file);
+    return result;
 }
 
 void displayProgress(long current, long max){
@@ -18,9 +45,12 @@ void displayProgress(long current, long max){
   cerr << "\x1B[2K"; // Clear line
   cerr << "\x1B[2000D"; // Cursor left
   cerr << '[';
-  for(int i=0 ; i<barWidth ; ++i){ if(i<barWidth*current/max){ cerr << '=' ; }else{ cerr << ' ' ; } }
+  for(int i=0 ; i<barWidth ; ++i){ 
+    if(i<barWidth*current/max){ cerr << '=' ; }else{ cerr << ' ' ; } 
+  }
   cerr << ']';
   cerr << " " << Form("%8d/%8d (%5.2f%%)", (int)current, (int)max, 100.0*current/max) ;
+  cerr << " - used virtual memory: " <<  getValue()/1000.0<<" MB";
   cerr.flush();
 }
 

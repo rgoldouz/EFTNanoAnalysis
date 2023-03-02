@@ -62,12 +62,18 @@ c.cd()
 
 
 samples = {}
-samples['LFVVecU_2016_llB1.root'] = ["LFVVecU_2016_llB1_prefit","LFVVecU_2016_llB1_postfit"]
-samples['LFVVecU_2017_llB1.root'] = ["LFVVecU_2017_llB1_prefit","LFVVecU_2017_llB1_postfit"]
-samples['LFVVecU_2018_llB1.root'] = ["LFVVecU_2018_llB1_prefit","LFVVecU_2018_llB1_postfit"]
-samples['LFVVecU_2016_com.root'] = ["ch1_prefit","ch1_postfit","ch2_prefit","ch2_postfit"]
-samples['LFVVecU_2017_com.root'] = ["ch1_prefit","ch1_postfit","ch2_prefit","ch2_postfit"]
-samples['LFVVecU_2018_com.root'] = ["ch1_prefit","ch1_postfit","ch2_prefit","ch2_postfit"]
+#samples['LFVVecU_2016_llB1.root'] = ["LFVVecU_2016_llB1_prefit","LFVVecU_2016_llB1_postfit"]
+#samples['LFVVecU_2017_llB1.root'] = ["LFVVecU_2017_llB1_prefit","LFVVecU_2017_llB1_postfit"]
+#samples['LFVVecU_2018_llB1.root'] = ["LFVVecU_2018_llB1_prefit","LFVVecU_2018_llB1_postfit"]
+#samples['LFVVecU_2016_com.root'] = ["ch1_prefit","ch1_postfit","ch2_prefit","ch2_postfit"]
+#samples['LFVVecU_2017_com.root'] = ["ch1_prefit","ch1_postfit","ch2_prefit","ch2_postfit"]
+#samples['LFVVecU_2018_com.root'] = ["ch1_prefit","ch1_postfit","ch2_prefit","ch2_postfit"]
+
+
+samples['postfit_shapes.root'] = []
+for j in range(12):
+    samples['postfit_shapes.root'].append("ch"+ str(j+1) + "_prefit")
+    samples['postfit_shapes.root'].append("ch"+ str(j+1) + "_postfit")
 
 
 adapt=ROOT.gROOT.GetColor(12)
@@ -75,7 +81,7 @@ new_idx=ROOT.gROOT.GetListOfColors().GetSize() + 1
 trans=ROOT.TColor(new_idx, adapt.GetRed(), adapt.GetGreen(),adapt.GetBlue(), "",0.5)
 
 for key, categories in samples.items():
-    file=ROOT.TFile('PostFit/' + key,"r")
+    file=ROOT.TFile('CombinedFilesBNV/' + key,"r")
     ncat=len(categories)
     for i in range (0,ncat):
        print "PostFit/" + key.split('.')[0] +'_'+categories[i]
@@ -84,6 +90,9 @@ for key, categories in samples.items():
        TW=file.Get(categories[i]).Get("tW")
        DY=file.Get(categories[i]).Get("DY")
        TT=file.Get(categories[i]).Get("tt")
+       if type(DY) != ROOT.TH1F:
+           DY=other.Clone()
+           DY.Scale(0.00001)
 #       jets=file.Get(categories[i]).Get("Jets")
     
        Data.GetXaxis().SetTitle("")
@@ -129,7 +138,7 @@ for key, categories in samples.items():
        stack.Add(TT)
        stack.Add(TW)
     
-       errorBand.SetMarkerSize(0)
+       errorBand.SetMarkerSize(1)
        errorBand.SetFillColor(new_idx)
        errorBand.SetFillStyle(3001)
        errorBand.SetLineWidth(1)
@@ -156,16 +165,16 @@ for key, categories in samples.items():
        Data.SetMaximum(max(Data.GetMaximum()*1.05,stack.GetMaximum()*1.05))
        Data.SetMinimum(0)
        Data.SetMaximum(1.05*Data.GetMaximum())
-       Data.GetXaxis().SetRangeUser(-0.6, 0.8)
+       Data.GetXaxis().SetRangeUser(-1, 1)
     #   Data.SetLineColor(ROOT.kWhite)
-       Data.SetMarkerSize(0)
-       Data.SetLineWidth(0)
+#       Data.SetMarkerSize(0)
+#       Data.SetLineWidth(0)
        Data.Draw("ex0")
     #   Data.Draw("hist")
        stack.Draw("histsame")
        errorBand.Draw("e2same")
        Data.Draw("ex0same")
-    #   Data.Draw("esame")
+       Data.Draw("esame")
     
        legende=make_legend()
     #   legende.AddEntry(Data,"Observed","elp")
@@ -251,9 +260,9 @@ for key, categories in samples.items():
        h1.GetYaxis().SetLabelSize(0.11)
        h1.GetXaxis().SetTitleFont(42)
        h1.GetYaxis().SetTitleFont(42)
-       h1.SetMarkerSize(0)
-       h1.SetLineWidth(0)
-       #h1.Draw("e0p")
+       h1.SetMarkerSize(1)
+       h1.SetLineWidth(1)
+       h1.Draw("e0p")
        h1.Draw("ex0")
        h3.Draw("e2same")
     

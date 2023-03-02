@@ -22,7 +22,7 @@ TGaxis.SetMaxDigits(4)
 #bins = array( 'd',[-1,-0.6,-0.4,-0.25,-0.2,-0.15,-0.1,-0.05,0,0.05,0.1,0.15,0.2,0.25,0.35,0.6,0.8,1] )
 #bins = array( 'd',[-1,-0.6,-0.5,-0.3,-0.25,-0.2,-0.15,-0.1,-0.05,0,0.05,0.1,0.15,0.20,0.25,0.4,1] )
 #bins = array( 'd',[-1,-0.9,-0.8,-0.7,-0.6,-0.5,-0.4,-0.3,-0.2,-0.1,0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1] )
-bins = array( 'd',[-1,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,0.9,1] )
+bins = array( 'd',[-1,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.75,0.9,1] )
 
 leptonPTbins = array( 'd',[0,25,50,75,100,125,150,175, 200, 250, 300, 350, 400, 600, 800, 1100, 1500] )
 #bins = array( 'd',[-0.4,-0.25,-0.2,-0.15,-0.1,-0.05,0,0.05,0.1,0.15,0.2,0.25,0.35,0.6] )
@@ -176,6 +176,8 @@ def compareError(histsup,histsdown, sys, ch = "channel", reg = "region", year='2
         legend.AddEntry(histsup[n],sys[n],'L')
         if(histsup[n].GetMaximum()>maxi):
             maxi=G.GetMaximum()
+        if (histsup[n].GetMaximum()>100):
+            print sys[n] + 'has large error:' + str(histsup[n].GetMaximum())+  year+ch+reg+var
         histsdown[n].SetLineColor(n+1)
         histsdown[n].SetFillColor(0)
         histsdown[n].SetLineWidth(2)
@@ -390,7 +392,7 @@ def stackPlotsError(hists, SignalHists,error, errorRatio, Fnames, ch = "channel"
         Label_channelb.SetTextSize(0.06)
         Label_channelb.SetTextFont(42)
         Label_channelb.Draw("same")
-    if reg=="llBg1":
+    elif reg=="llBg1":
         Label_channel = ROOT.TLatex(0.18,0.8,ch)
         Label_channel.SetNDC()
         Label_channel.SetTextSize(0.06)
@@ -401,6 +403,12 @@ def stackPlotsError(hists, SignalHists,error, errorRatio, Fnames, ch = "channel"
         Label_channelb.SetTextSize(0.06)
         Label_channelb.SetTextFont(42)
         Label_channelb.Draw("same")
+    else:
+        Label_channel = ROOT.TLatex(0.18,0.8,ch)
+        Label_channel.SetNDC()
+        Label_channel.SetTextSize(0.06)
+        Label_channel.SetTextFont(42)
+        Label_channel.Draw("same")
 
     Label_channel2 = ROOT.TLatex(0.2,0.8,"#it{e#mu}")
     Label_channel2.SetNDC()
@@ -474,18 +482,18 @@ def stackPlotsError(hists, SignalHists,error, errorRatio, Fnames, ch = "channel"
 
 #year=['2016','2017','2018','All']
 year=['2016preVFP', '2016postVFP', '2017','2018', 'All']
-#year=['2016postVFP']
+#year=['2017']
 LumiErr = [0.038, 0.038, 0.038, 0.038, 0.038]
 #regions=["ll","llOffZ","llB1", "llBg1"]
-regions=["llB1", "llBg1"]
+regions=["ll","llOffZ","llB1", "llBg1"]
 regionsName=["1 b-tag", "$>$ 1 b-tag"]
 channels=["ee", "emu", "mumu", "ll"];
 variables=["lep1Pt","lep1Eta","lep1Phi","lep2Pt","lep2Eta","lep2Phi","llM","llPt","llDr","llDphi","jet1Pt","jet1Eta","jet1Phi","njet","nbjet","Met","MetPhi","nVtx","llMZw", "topMass","topL1Dphi","topL1Dr","topL1DptOsumPt","topPt", "BDT"]
-variables=["BDT"]
+#variables=["BDT"]
 variablesName=["p_{T}(leading lepton)","#eta(leading lepton)","#Phi(leading lepton)","p_{T}(sub-leading lepton)","#eta(sub-leading lepton)","#Phi(sub-leading lepton)","M(ll)","p_{T}(ll)","#Delta R(ll)","#Delta #Phi(ll)","p_{T}(leading jet)","#eta(leading jet)","#Phi(leading jet)","Number of jets","Number of b-tagged jets","MET","#Phi(MET)","Number of vertices", "M(ll) [z window]", "top mass", "#Delta #Phi(ll, top)", "#Delta R(ll, top)", "|pt_top - pt_l1|/(pt_top + pt_l1)", "p_{T}(top)", "BDT"]
-variablesName=["BDT"]
+#variablesName=["BDT"]
 sys = ["eleRecoSf", "eleIDSf", "muIdIsoSf", "bcTagSf", "LTagSf","pu", "prefiring", "trigSF","jes", "jer","muonScale","electronScale","muonRes", "unclusMET", "bcTagSfUnCorr", "LTagSfUnCorr","JetPuID"]
-sys = ["muonScale","electronScale","muonRes", "unclusMET"]
+#sys = ["muonScale","electronScale","muonRes", "unclusMET"]
 
 #sys = ["jes", "jer","muonScale","electronScale","muonRes", "unclusMET","JetPuID"]
 #sys = ["eleRecoSf", "eleIDSf", "muIdSf", "muIsoSf", "bcTagSF", "udsgTagSF","pu", "prefiring", "trigSF", "jes", "jer","electronScale"]
@@ -494,12 +502,12 @@ HistAddress = '/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/hists/'
 
 #Samples = ['data.root','WJetsToLNu.root','others.root', 'DY.root', 'TTTo2L2Nu.root', 'ST_tW.root', 'LFVVecC.root', 'LFVVecU.root']
 #SamplesName = ['Data','Jets','Others', 'DY', 't#bar{t}', 'tW' , 'LFV-vec [c_{e#mutc}] #times 100', 'LFV-vec [c_{e#mutu}] #times 10']
-Samples = ['data.root','WJets.root','other.root', 'DY.root', 'tW.root', 'ttbar.root', 'STBNV_TDUE.root', 'STBNV_TDUMu.root']
-SamplesName = ['Data','Jets','Other', 'DY', 'tW','t#bar{t}', 'BNV tdue', 'BNV tdu#mu']
-SamplesNameLatex = ['Data','Jets','Others', 'DY', 'tt', 'tW',  'LFV-vector(emutc)', 'LFV-vector(emutu)']
-NormalizationErr = [0, 0.5, 0.5, 0.3, 0.1, 0.05, 0,0]
+Samples = ['data.root','other.root', 'DY.root', 'tW.root', 'ttbar.root', 'STBNV_TDUE.root', 'STBNV_TDUMu.root']
+SamplesName = ['Data','Other', 'DY', 'tW','t#bar{t}', 'BNV tdue', 'BNV tdu#mu']
+SamplesNameLatex = ['Data','Others', 'DY', 'tt', 'tW',  'LFV-vector(emutc)', 'LFV-vector(emutu)']
+NormalizationErr = [0, 0.5, 0.3, 0.1, 0.05, 0,0]
 
-colors =  [ROOT.kBlack,ROOT.kYellow,ROOT.kGreen,ROOT.kBlue-3,ROOT.kOrange-3,ROOT.kRed-4, ROOT.kGray+1,ROOT.kGray+3,
+colors =  [ROOT.kBlack,ROOT.kGreen,ROOT.kBlue-3,ROOT.kOrange-3,ROOT.kRed-4, ROOT.kGray+1,ROOT.kGray+3,
 ]
 
 Hists = []
@@ -547,7 +555,7 @@ for numyear, nameyear in enumerate(year):
                     for numsys, namesys in enumerate(sys):
                         if 'data' in Samples[f]:
                             continue
-                        h= Files[f].Get(namech + '_' + namereg + '_' + namevar+ '_' + namesys+ '_Up')
+                        h= Files[f].Get('sys' + namech + '/' + namech + '_' + namereg + '_' + namevar+ '_' + namesys+ '_Up')
                         if 'BNV' in Samples[f]:
                             h.Scale(wc1)
                         h.SetFillColor(colors[f])
@@ -558,7 +566,7 @@ for numyear, nameyear in enumerate(year):
                         if 'lep1Pt' in namevar:
                             h=h.Rebin(len(leptonPTbins)-1,"",leptonPTbins)
                         SysUpl4.append(h)
-                        h= Files[f].Get(namech + '_' + namereg + '_' + namevar+ '_' + namesys+ '_Down')
+                        h= Files[f].Get('sys' + namech + '/' + namech + '_' + namereg + '_' + namevar+ '_' + namesys+ '_Down')
                         if 'BNV' in Samples[f]:
                             h.Scale(wc1)
                         h.SetFillColor(colors[f])
@@ -637,7 +645,7 @@ for numyear, nameyear in enumerate(year):
             t2Tune=[]
             t2hdamp=[]
             for numvar, namevar in enumerate(variables):
-                if 'BDT' not in namevar:
+                if 'BDT' not in namevar or numreg<2:
                     continue
                 pdfHists=[]
                 QscaleHists=[]
@@ -830,13 +838,13 @@ for numyear, nameyear in enumerate(year):
     for numch, namech in enumerate(channels):
         for numreg, namereg in enumerate(regions):
             for numvar, namevar in enumerate(variables):
-                if 'BDT' not in namevar:
+                if 'BDT' not in namevar or numreg<2:
                     continue
                 glistup = []
                 glistdown = []
                 for g in range(len(Gttsys)):
-                    hup = Hists[numyear][5][numch][numreg][numvar].Clone()
-                    hdown = Hists[numyear][5][numch][numreg][numvar].Clone()
+                    hup = Hists[numyear][4][numch][numreg][numvar].Clone()
+                    hdown = Hists[numyear][4][numch][numreg][numvar].Clone()
 #                    print str(hup.GetNbinsX())
                     for b in range(hup.GetNbinsX()):
                         rb = 0
@@ -916,11 +924,16 @@ for numyear, nameyear in enumerate(year):
                     errdown = errdown + (LumiErr[numyear]*Hists_copy[numyear][len(Samples)-3][numch][numreg][numvar].GetBinContent(b+1,wc1))**2
 #                    if 'lep1Pt' in namevar:
 #                        print str(math.sqrt(errup)/content) + '-' +str(math.sqrt(errdown)/content)
+                  
                     for f in range(len(Samples)):
-                        errup = errup + (NormalizationErr[f]*Hists[numyear][f][numch][numreg][numvar].GetBinContent(b+1,wc1))**2                    
-                        errdown = errdown + (NormalizationErr[f]*Hists[numyear][f][numch][numreg][numvar].GetBinContent(b+1,wc1))**2
+                        if 'DY' in Samples[f] and numreg==0:
+                            errup = errup + (0.1*Hists[numyear][f][numch][numreg][numvar].GetBinContent(b+1,wc1))**2                    
+                            errdown = errdown + (0.1*Hists[numyear][f][numch][numreg][numvar].GetBinContent(b+1,wc1))**2
+                        else:
+                            errup = errup + (NormalizationErr[f]*Hists[numyear][f][numch][numreg][numvar].GetBinContent(b+1,wc1))**2
+                            errdown = errdown + (NormalizationErr[f]*Hists[numyear][f][numch][numreg][numvar].GetBinContent(b+1,wc1))**2
 #add ttbar theory errors
-                    if 'BDT' in namevar:
+                    if 'BDT' in namevar and numreg>1:
                         errup = errup + (pdfGraph[numyear][numch][numreg][0].GetErrorYhigh(b))**2
                         errup = errup + (qscaleGraph[numyear][numch][numreg][0].GetErrorYhigh(b))**2
                         errup = errup + (ISRGraph[numyear][numch][numreg][0].GetErrorYhigh(b))**2

@@ -16,6 +16,95 @@ from ROOT import THStack
 import gc
 TGaxis.SetMaxDigits(2)
 
+def compare3Hist(A, B, C, textA="A", textB="B", textC="C",label_name="sample", can_name="can"):
+
+    canvas = ROOT.TCanvas(can_name,can_name,10,10,1100,628)
+    canvas.SetRightMargin(0.15)
+    canvas.cd()
+
+    pad_name = "pad"
+    pad1=ROOT.TPad(pad_name, pad_name, 0.05, 0.3, 1, 0.99 , 0)
+    pad1.Draw()
+    pad1.SetLogy()
+    pad2=ROOT.TPad(pad_name, pad_name, 0.05, 0.05, 1, 0.3 , 0)
+    pad2.SetGridy();
+    pad2.Draw()
+    pad1.cd()
+
+    A.SetLineColor( 1 )
+    B.SetLineColor( 2 )
+    C.SetLineColor( 4 )
+
+    A.SetTitle("")
+    A.GetXaxis().SetTitle('BDT output')
+    A.GetYaxis().SetTitle('Event ')
+    A.GetXaxis().SetTitleSize(0.05)
+    A.GetYaxis().SetTitleSize(0.05)
+    A.SetMaximum(1.2*max(A.GetMaximum(),B.GetMaximum(),C.GetMaximum()));
+    A.SetMinimum(0.1);
+    B.SetMinimum(0.1);
+    C.SetMinimum(0.1);
+    A.GetYaxis().SetTitleOffset(0.7)
+    A.Draw()
+    B.Draw('esame')
+    C.Draw('esame')
+
+    legend = ROOT.TLegend(0.7,0.75,1,1)
+    legend.AddEntry(A ,textA,'l')
+    legend.AddEntry(B ,textB,'l')
+    legend.AddEntry(C ,textC,'l')
+    legend.SetBorderSize(0)
+    legend.SetTextFont(42)
+    legend.SetTextSize(0.05)
+    legend.Draw("same")
+
+    Label_channel2 = ROOT.TLatex(0.15,0.65,'#color[2]{'+can_name.split('_')[-1]+'}')
+    Label_channel2.SetNDC()
+    Label_channel2.SetTextFont(42)
+    Label_channel2.SetTextSize(0.085)
+    Label_channel2.Draw("same")
+
+    pad2.cd()
+    ratioB = A.Clone()
+    ratioB.Divide(B)
+    ratioB.SetLineColor( 2 )
+#    r = ratioB.Clone()
+    fontScale = 2
+    nbin = ratioB.GetNbinsX()
+    x_min= ratioB.GetBinLowEdge(1)
+    x_max= ratioB.GetBinLowEdge(nbin)+ratioB.GetBinWidth(nbin)
+#    ratio_y_min=0.95*r.GetBinContent(r.FindFirstBinAbove(0))
+#    ratio_y_max=1.05*r.GetBinContent(r.GetMaximumBin())
+    dummy_ratio = ROOT.TH2D("dummy_ratio","",nbin,x_min,x_max,1,0.8,1.2)
+    dummy_ratio.SetStats(ROOT.kFALSE)
+    dummy_ratio.GetYaxis().SetTitle('Ratio')
+    dummy_ratio.GetXaxis().SetTitle("")
+    dummy_ratio.GetXaxis().SetTitleSize(0.05*fontScale)
+    dummy_ratio.GetXaxis().SetLabelSize(0.05*fontScale)
+    dummy_ratio.GetXaxis().SetMoreLogLabels()
+    dummy_ratio.GetXaxis().SetNoExponent()
+    dummy_ratio.GetYaxis().SetNdivisions(505)
+    dummy_ratio.GetYaxis().SetTitleSize(0.07*fontScale)
+    dummy_ratio.GetYaxis().SetLabelSize(0.05 *fontScale)
+    dummy_ratio.GetYaxis().SetTitleOffset(0.3)
+    dummy_ratio.Draw()
+#    ratioB.Draw("esame")
+
+    ratioC = C.Clone()
+    ratioC.Divide(B)
+    ratioC.SetLineColor( 4 )
+    ratioC.Draw("esame")
+
+    Label_channel = ROOT.TLatex(0.15,0.8,textB + '/'+textC)
+    Label_channel.SetNDC()
+    Label_channel.SetTextFont(42)
+    Label_channel.Draw("same")
+
+    canvas.Print("3H_" + can_name + ".png")
+    del canvas
+    gc.collect()
+
+
 def puDraw(hists,Fnames,year,can):
     ratio=[]
     canvas = ROOT.TCanvas(can,can,50,50,865,780)
@@ -147,7 +236,7 @@ def puDraw(hists,Fnames,year,can):
 
 
 samples = {}
-
+#/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions16/13TeV/PileUp/UltraLegacy/
 samples["UL2017_down"]=[    "PileupHistogram-goldenJSON-13tev-2017-66000ub-99bins.root"]
 samples["UL2017_nominal"]=[    "PileupHistogram-goldenJSON-13tev-2017-69200ub-99bins.root"]
 samples["UL2017_up"]=[    "PileupHistogram-goldenJSON-13tev-2017-72400ub-99bins.root"]
@@ -253,6 +342,22 @@ Ngr2016postVFP=[]
 Ngr2017=[]
 Ngr2018=[]
 
+f = ROOT.TFile.Open("2018_DY.root")
+h_2018_DY = f.Get('truePU')
+h_2018_DY.Scale(1/h_2018_DY.Integral())
+
+f = ROOT.TFile.Open("2017_DY.root")
+h_2017_DY = f.Get('truePU')
+h_2017_DY.Scale(1/h_2017_DY.Integral())
+
+f = ROOT.TFile.Open("2016preVFP_DY.root")
+h_2016preVFP_DY = f.Get('truePU')
+h_2016preVFP_DY.Scale(1/h_2016preVFP_DY.Integral())
+
+f = ROOT.TFile.Open("2016postVFP_DY.root")
+h_2016postVFP_DY = f.Get('truePU')
+h_2016postVFP_DY.Scale(1/h_2016postVFP_DY.Integral())
+
 weights={}
 for key, value in samples.items():
     if '2016preVFP' in key:
@@ -263,8 +368,9 @@ for key, value in samples.items():
         gr2016preVFP.append(h)
         Ngr2016preVFP.append(key)
         for b in range(len(MC_bins)):
-            if MC2016_value[b]>0:
-                W.append(h.GetBinContent(b+1)/MC2016_value[b])
+            if h_2016postVFP_DY.GetBinContent(b+1)>0:
+#                W.append(h.GetBinContent(b+1)/MC2016_value[b])
+                W.append(h.GetBinContent(b+1)/h_2016postVFP_DY.GetBinContent(b+1))
         weights[key] = W
     if '2016postVFP' in key:
         W = []
@@ -274,8 +380,9 @@ for key, value in samples.items():
         gr2016postVFP.append(h)
         Ngr2016postVFP.append(key)
         for b in range(len(MC_bins)):
-            if MC2016_value[b]>0:
-                W.append(h.GetBinContent(b+1)/MC2016_value[b])
+            if h_2016postVFP_DY.GetBinContent(b+1)>0:
+#                W.append(h.GetBinContent(b+1)/MC2016_value[b])
+                W.append(h.GetBinContent(b+1)/h_2016postVFP_DY.GetBinContent(b+1))
         weights[key] = W
     if '2017' in key:
         W = []
@@ -285,8 +392,9 @@ for key, value in samples.items():
         gr2017.append(h)
         Ngr2017.append(key)
         for b in range(len(MC_bins)):
-            if MC2017_value[b]>0:
-                W.append(h.GetBinContent(b+1)/MC2017_value[b])
+            if h_2017_DY.GetBinContent(b+1)>0:
+#                W.append(h.GetBinContent(b+1)/MC2017_value[b])
+                W.append(h.GetBinContent(b+1)/h_2017_DY.GetBinContent(b+1))
         weights[key] = W
     if '2018' in key:
         W = []
@@ -296,8 +404,9 @@ for key, value in samples.items():
         gr2018.append(h)
         Ngr2018.append(key)
         for b in range(len(MC_bins)):
-            if MC2018_value[b]>0:
-                W.append(h.GetBinContent(b+1)/MC2018_value[b])
+            if h_2018_DY.GetBinContent(b+1)>0:
+#                W.append(h.GetBinContent(b+1)/MC2018_value[b])
+                W.append(h.GetBinContent(b+1)/h_2018_DY.GetBinContent(b+1))
         weights[key] = W
 
 hcopy = gr2016preVFP[0].Clone()
@@ -336,5 +445,74 @@ puDraw(gr2016preVFP,Ngr2016preVFP,'UL2016preVFP','pu2016preVFP')
 puDraw(gr2016postVFP,Ngr2016postVFP,'UL2016postVFP','pu2016postVFP')
 puDraw(gr2017,Ngr2017,'UL2017','pu2017')
 puDraw(gr2018,Ngr2018,'UL2018','pu2018')
+
+#f = ROOT.TFile.Open("2018_DY.root")
+#h = f.Get('truePU')
+#h.Scale(1/h.Integral())
+#hcopy = gr2018[0].Clone()
+#for b in range(hcopy.GetNbinsX()):
+#    if h.GetBinContent(b+1)>0:
+#        hcopy.SetBinContent(b+1,h.GetBinContent(b+1))
+#    else:
+#        hcopy.SetBinContent(b+1,00000001)
+#MCpu2018=[hcopy]
+#MCpu2018Name=["DYMC"]
+#for i in range(len(gr2018)):
+#    if 'up' not in Ngr2018[i] and 'down' not in Ngr2018[i]:
+#        MCpu2018.append(gr2018[i])
+#        MCpu2018Name.append(Ngr2018[i])
+#print MCpu2018Name
+#compare3Hist(MCpu2018[1],MCpu2018[0],MCpu2018[2],MCpu2018Name[1],MCpu2018Name[0],MCpu2018Name[2], 'PU2018' ,'pu2018')
+#
+#f = ROOT.TFile.Open("2017_DY.root")
+#h = f.Get('truePU')
+#h.Scale(1/h.Integral())
+#hcopy = gr2017[0].Clone()
+#for b in range(hcopy.GetNbinsX()):
+#    if h.GetBinContent(b+1)>0:
+#        hcopy.SetBinContent(b+1,h.GetBinContent(b+1))
+#    else:
+#        hcopy.SetBinContent(b+1,00000001)
+#MCpu2017=[hcopy]
+#MCpu2017Name=["DYMC"]
+#for i in range(len(gr2017)):
+#    if 'up' not in Ngr2017[i] and 'down' not in Ngr2017[i]:
+#        MCpu2017.append(gr2017[i])
+#        MCpu2017Name.append(Ngr2017[i])
+#compare3Hist(MCpu2017[1],MCpu2017[0],MCpu2017[2],MCpu2017Name[1],MCpu2017Name[0],MCpu2017Name[2], 'PU2017' ,'pu2017')
+#
+#f = ROOT.TFile.Open("2016postVFP_DY.root")
+#h = f.Get('truePU')
+#h.Scale(1/h.Integral())
+#hcopy = gr2016postVFP[0].Clone()
+#for b in range(hcopy.GetNbinsX()):
+#    if h.GetBinContent(b+1)>0:
+#        hcopy.SetBinContent(b+1,h.GetBinContent(b+1))
+#    else:
+#        hcopy.SetBinContent(b+1,00000001)
+#MCpu2016postVFP=[hcopy]
+#MCpu2016postVFPName=["DYMC"]
+#for i in range(len(gr2016postVFP)):
+#    if 'up' not in Ngr2016postVFP[i] and 'down' not in Ngr2016postVFP[i]:
+#        MCpu2016postVFP.append(gr2016postVFP[i])
+#        MCpu2016postVFPName.append(Ngr2016postVFP[i])
+#compare3Hist(MCpu2016postVFP[1],MCpu2016postVFP[0],MCpu2016postVFP[2],MCpu2016postVFPName[1],MCpu2016postVFPName[0],MCpu2016postVFPName[2], 'PU2016postVFP' ,'pu2016postVFP')
+#
+#f = ROOT.TFile.Open("2016preVFP_DY.root")
+#h = f.Get('truePU')
+#h.Scale(1/h.Integral())
+#hcopy = gr2016preVFP[0].Clone()
+#for b in range(hcopy.GetNbinsX()):
+#    if h.GetBinContent(b+1)>0:
+#        hcopy.SetBinContent(b+1,h.GetBinContent(b+1))
+#    else:
+#        hcopy.SetBinContent(b+1,00000001)
+#MCpu2016preVFP=[hcopy]
+#MCpu2016preVFPName=["DYMC"]
+#for i in range(len(gr2016preVFP)):
+#    if 'up' not in Ngr2016preVFP[i] and 'down' not in Ngr2016preVFP[i]:
+#        MCpu2016preVFP.append(gr2016preVFP[i])
+#        MCpu2016preVFPName.append(Ngr2016preVFP[i])
+#compare3Hist(MCpu2016preVFP[1],MCpu2016preVFP[0],MCpu2016preVFP[2],MCpu2016preVFPName[1],MCpu2016preVFPName[0],MCpu2016preVFPName[2], 'PU2016preVFP' ,'pu2016preVFP')
 
 

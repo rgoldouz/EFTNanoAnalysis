@@ -5,7 +5,6 @@ import sys
 from lobster import cmssw
 from lobster.core import AdvancedOptions, Category, Config, MultiProductionDataset, StorageConfiguration, Workflow, Dataset,ParentDataset
 sys.path.append(os.path.abspath("."))
-import Files_2017_nano
 import Files_ULall_nano
 
 SAMPLES = {}
@@ -55,24 +54,24 @@ storage = StorageConfiguration(
 gs_resources = Category(
     name='gs',
     cores=1,
-    memory=8000,
-    disk=10000
+    memory=3900,
+    disk=3900,
 )
 
-
-tt_resources = Category(
-    name='tt',
+gsLL_resources = Category(
+    name='gs',
     cores=1,
-    memory=12000,
-    disk=15000
+    memory=3900,
+    disk=3900,
+    mode='fixed'
 )
+
 #################################################################
 wf = []
 for key, value in SAMPLES.items():
-    FPT=1
-    cat = gs_resources
-    if 'TTTo2L2Nu' in key or 'BNV' in key:
-        cat=tt_resources
+#    cat = gs_resources
+#    if 'TT' in key or 'DY' in key:
+    cat = gsLL_resources
     if path.exists('/hadoop/store/user/rgoldouz/FullProduction/AnalysisTOPBNV/Analysis_' + key) and len(os.listdir('/hadoop/store/user/rgoldouz/FullProduction/AnalysisTOPBNV/Analysis_' + key))>0:
         continue
     if path.exists('/hadoop/store/user/rgoldouz/FullProduction/AnalysisTOPBNV/Analysis_' + key):
@@ -98,7 +97,7 @@ for key, value in SAMPLES.items():
         dataset=Dataset(
            files=value[0],
            patterns=["*.root"],
-           files_per_task =FPT
+           files_per_task = 1
         ),
 #        merge_command='hadd @outputfiles @inputfiles',
 #        merge_size='2G',

@@ -8,6 +8,8 @@
 #include "sumOfWeightsSignal.h"
 #include "lepton_candidate.h"
 #include "jet_candidate.h"
+#include "XYMETCorrection_withUL17andUL18andUL16.h"
+#include "lester_mt2_bisect.h"
 #include "TRandom.h"
 #include "TRandom3.h"
 #include "TDirectory.h"
@@ -45,38 +47,36 @@
 #include "stdlib.h"
 #include "stdio.h"
 #include "string.h"
+#include "TMath.h"
 #endif
 
 using namespace correction;
 using namespace std;
 
-int parseLine(char* line){
-    // This assumes that a digit will be found and the line ends in " Kb".
-    int i = strlen(line);
-    const char* p = line;
-    while (*p <'0' || *p > '9') p++;
-    line[i-3] = '\0';
-    i = atoi(p);
-    return i;
+void resetVec(std::vector<int> &K){
+  for (int i=0;i<K.size();++i){  
+    K[i]=-1;
+  }
 }
 
-int getValue(){ //Note: this value is in KB!
-    FILE* file = fopen("/proc/self/status", "r");
-    int result = -1;
-    char line[128];
+bool useRegions(std::vector<int> K){
+  bool ifuse=false;
+  for (int i=0;i<K.size();++i){
+    if(K[i]>=0) ifuse=true;
+  }
+  return ifuse;
+}
 
-    while (fgets(line, 128, file) != NULL){
-        if (strncmp(line, "VmRSS:", 6) == 0){
-            result = parseLine(line);
-            break;
-        }
-    }
-    fclose(file);
-    return result;
+float DYMassPowheg(float M){
+  return (1.0678 - 0.000120666*M + 0.0000000322*pow(M,2) - 0.0000000000039*pow(M,3));
 }
 
 float topPtPowheg(float pt){
-  return (0.973 - (0.000134 * pt) + (0.103 * exp(pt * (-0.0118))));
+//Data top pt reweighting
+  if (pt<500) return TMath::Exp(0.0615- (0.0005*pt));
+  else return TMath::Exp(0.0615- (0.0005*500));
+//MC top pt reweighting
+//  return (0.973 - (0.000134 * pt) + (0.103 * exp(pt * (-0.0118))));
 }
 
 float topPtMGLO(float x){
@@ -95,10 +95,30 @@ bool ifSysNeeded(std::vector<lepton_candidate*> *lep, float cut){
   return pass;
 }     
 
-void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year, TString run, float xs, float lumi, float Nevent, int iseft, int nRuns){
+int getVecPos(std::vector<TString> vec, string element){
+    int i;
+    for(i = 0; i < vec.size(); i++){
+        if(vec[i] == element){
+            break;
+        }
+    }
+    if(i == vec.size()){
+        std::cout<<"No such element as "<<element<<" found. Please enter again: ";
+        std::cin>>element;
+        i = getVecPos(vec, element);
+    }
+
+    return i;
+}
+
+void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year, TString RUN, float xs, float lumi, float Nevent, int iseft, int nRuns){
+  bool ifSys=false;
+  bool ifCR=true;
+  double memoryInit=getValue();
   TH1EFT  *crossSection = new TH1EFT("crossSection","crossSection",1,0,1);
   TH1F  *eleEffNum = new TH1F("eleEffNum","eleEffNum",10,0,1000);
   TH1F  *eleEffDen = new TH1F("eleEffDen","eleEffDen",10,0,1000);
+  TH1F  *truePU = new TH1F("truePU","truePU",100,0,100);
 
   TH2F  btagEff_b_H;
   TH2F  btagEff_c_H;
@@ -108,6 +128,8 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
   TH2F  sf_triggermumu_H;
   TH2F  jetVetoMaps_H;
   TH2F  highPtMuRecoSF_pVsAbsEta_H;
+  TH2F  eff_triggermumu_mc_H;
+  TH2F  eff_triggermumu_data_H;
   std::string rochesterFile;
   std::string btagFile;
   GEScaleSyst *GE = new GEScaleSyst();
@@ -154,6 +176,11 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
     jetVetoMaps_H = *(TH2F*)Map2016preVFP->Get("h2hot_ul16_plus_hbm2_hbp12_qie11");
     Map2016preVFP->Close();
     delete Map2016preVFP;
+    TFile *f_triggerEffMuMu = new TFile("/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/input/OutFile-v20190510-Combined-Run2016BtoH_Run2017BtoF_Run2018AtoD-M120to10000.root");
+    eff_triggermumu_mc_H =  *(TH2F*)f_triggerEffMuMu->Get("Eff_2016_DY_var");
+    eff_triggermumu_data_H =  *(TH2F*)f_triggerEffMuMu->Get("Eff_2016_Data_var");
+    f_triggerEffMuMu->Close();
+    delete f_triggerEffMuMu;
   }
   if(year == "2016postVFP"){
     eleSF="/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/data/POG/EGM/2016postVFP_UL/electron.json.gz";
@@ -164,6 +191,11 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
     jetVetoMaps_H = *(TH2F*)Map2016postVFP->Get("h2hot_ul16_plus_hbm2_hbp12_qie11");
     Map2016postVFP->Close();
     delete Map2016postVFP;
+    TFile *f_triggerEffMuMu = new TFile("/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/input/OutFile-v20190510-Combined-Run2016BtoH_Run2017BtoF_Run2018AtoD-M120to10000.root");
+    eff_triggermumu_mc_H =  *(TH2F*)f_triggerEffMuMu->Get("Eff_2016_DY_var");
+    eff_triggermumu_data_H =  *(TH2F*)f_triggerEffMuMu->Get("Eff_2016_Data_var");
+    f_triggerEffMuMu->Close();
+    delete f_triggerEffMuMu;
   }
   if(year == "2017"){
     eleSF="/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/data/POG/EGM/2017_UL/electron.json.gz";
@@ -174,6 +206,11 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
     jetVetoMaps_H = *(TH2F*)Map2017->Get("h2hot_ul17_plus_hep17_plus_hbpw89");
     Map2017->Close();
     delete Map2017;
+    TFile *f_triggerEffMuMu = new TFile("/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/input/OutFile-v20190510-Combined-Run2016BtoH_Run2017BtoF_Run2018AtoD-M120to10000.root");
+    eff_triggermumu_mc_H =  *(TH2F*)f_triggerEffMuMu->Get("Eff_2017_DY_var");
+    eff_triggermumu_data_H =  *(TH2F*)f_triggerEffMuMu->Get("Eff_2017_Data_var");
+    f_triggerEffMuMu->Close();
+    delete f_triggerEffMuMu;
   }
   if(year == "2018"){
     eleSF="/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/data/POG/EGM/2018_UL/electron.json.gz";
@@ -184,6 +221,11 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
     jetVetoMaps_H = *(TH2F*)Map2018->Get("h2hot_ul18_plus_hem1516_and_hbp2m1");
     Map2018->Close();
     delete Map2018;
+    TFile *f_triggerEffMuMu = new TFile("/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/input/OutFile-v20190510-Combined-Run2016BtoH_Run2017BtoF_Run2018AtoD-M120to10000.root");
+    eff_triggermumu_mc_H =  *(TH2F*)f_triggerEffMuMu->Get("Eff_2018_DY_var");
+    eff_triggermumu_data_H =  *(TH2F*)f_triggerEffMuMu->Get("Eff_2018_Data_var");
+    f_triggerEffMuMu->Close();
+    delete f_triggerEffMuMu;
   }
 
   auto csetFileEleSF = CorrectionSet::from_file(eleSF);
@@ -217,7 +259,13 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
   typedef vector<Dim2> Dim3;
   typedef vector<Dim3> Dim4;
 
-  std::vector<TString> regions{"ll","llOffZ","llB1", "llBg1", };
+  std::vector<TString> regions{"ll","llOffZ","llB1", "llBg1"};
+  if (ifCR && !ifSys ) {
+    regions.push_back("llB1InZ");
+    regions.push_back("llB1-BDTm1to0");
+    regions.push_back("llB1-BDT0to0p8");
+    regions.push_back("llB1-BDT0p8to1");
+  }
   std::vector<TString> channels{"ee", "emu", "mumu","ll"};
 
   const std::map<TString, std::vector<float>> vars =
@@ -228,7 +276,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
     {"lep2Pt",                         {3,      25,   0,  1000}},
     {"lep2Eta",                        {4,      20,   -3, 3   }},
     {"lep2Phi",                        {5,      25,   -4, 4   }},
-    {"llM",                            {6,      30,    0, 500 }},
+    {"llM",                            {6,      100,    0, 2000 }},
     {"llPt",                           {7,      20,    0, 200 }},
     {"llDr",                           {8,      25,    0, 7   }},
     {"llDphi",                         {9,      15,    0, 4   }},
@@ -247,6 +295,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
     {"topL1Dr",                        {22,     25,    0, 7   }},
     {"topL1DptOsumPt",                 {23,     20,    0, 1   }},
     {"topPt",                          {24,     25,    0, 500 }},
+    {"mT2",                            {25,     25,    0, 300 }},
   };
 
 //  D3HistsContainer Hists;
@@ -282,7 +331,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
 
   std::vector<TString> sys{"eleRecoSf", "eleIDSf", "JetPuID", "muIdIsoSf", "bcTagSf", "LTagSf","pu", "prefiring", "trigSF","jes", "jer","muonScale","electronScale","muonRes", "unclusMET", "bcTagSfUnCorr", "LTagSfUnCorr" };
 
-  if(data == "mc" && !fname.Contains("sys")){
+  if(data == "mc" && !fname.Contains("sys")  && ifSys){
     HistsSysUp.resize(channels.size());
     for (int i=0;i<channels.size();++i){
       HistsSysUp[i].resize(regions.size());
@@ -306,7 +355,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
     }
 
     for (int i=0;i<channels.size();++i){
-      for (int k=2;k<regions.size();++k){
+      for (int k=0;k<regions.size();++k){
         for( auto it = vars.cbegin() ; it != vars.cend() ; ++it ){
           for (int n=0;n<sys.size();++n){
             name<<channels[i]<<"_"<<regions[k]<<"_"<<it->first<<"_"<<sys[n]<<"_Up";
@@ -350,7 +399,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
   JetCorrectorParameters *pJer = new JetCorrectorParameters(JECFile, "RelativeJEREC1");
   JetCorrectionUncertainty *uncJer = new JetCorrectionUncertainty(*pJer);
 
-  if(data == "mc" && !fname.Contains("sys")){
+  if(data == "mc" && !fname.Contains("sys") && ifSys){
     HistsJecUp.resize(channels.size());
     for (int i=0;i<channels.size();++i){
       HistsJecUp[i].resize(regions.size()-2);
@@ -401,7 +450,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
 //[0] is ISR=2 FSR=1; [1] is ISR=1 FSR=2[2] is ISR=0.5 FSR=1; [3] is ISR=1 FSR=0.5;*
   int nPS = 4;
 
-  if(data == "mc"){
+  if(data == "mc" && ifSys){
     if ((fname.Contains("TTTo2L2Nu") && !fname.Contains("sys")) || fname.Contains("BNV")){
     HistsSysReweightsQscale.resize(channels.size());
     for (int i=0;i<channels.size();++i){
@@ -485,6 +534,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
   float topL1DptOsumPt_;
   float topPt_;
   float weight_;
+  float BDToutput_;
 
   TTree tree_out("BNV","Top BNV analysis") ;
   tree_out.Branch("lep1Pt"      , &lep1Pt_ , "lep1Pt/F" ) ;
@@ -503,6 +553,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
   tree_out.Branch("topL1DptOsumPt"      , &topL1DptOsumPt_ , "topL1DptOsumPt/F" ) ;
   tree_out.Branch("topPt"      , &topPt_ , "topPt/F" ) ;
   tree_out.Branch("weight"      , &weight_ , "weight/F" ) ;
+  tree_out.Branch("BDToutput"      , &BDToutput_, "BDToutput/F" ) ;
 
   TMVA::Tools::Instance();
   TMVA::Reader *readerMVA = new TMVA::Reader( "!Color:!Silent" );
@@ -567,7 +618,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
   float MetYJetsJerUp;
   float MetYJetsJerDown;
   WCFit *eft_fit;
-
+  std::pair<double,double> METXYCorr;
 
   TLorentzVector wp, wm, b, ab, top, atop, lep, alep;
   std::vector<float> nominalWeights;
@@ -580,6 +631,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
   bool leptonPass;
   bool triggerPass;
   bool DyPass;
+  bool DyInZPass;
   bool MetPass;
   bool triggerPassEE;
   bool triggerPassEMu;
@@ -620,6 +672,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
   float metUnclusMETPhiUp;
   float metUnclusMETPhiDown;
   float MVAoutput;
+  float mT2output;
   double P_bjet_data;
   double P_bjet_mc;
   int nAccept=0;
@@ -669,13 +722,20 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
   float CJetEff;
   float LJetEff;
   float SmearedMuonPt;
-  float myMET;
-  std::vector<int> reg;
-  std::vector<float> wgt;
-  std::vector<WCFit> wcfit;
+  float myMETpt;
+  float myMETphi;
   int nLHEl;
   float mllLHE;
   int weightSign;
+  float effTmc1;   
+  float effTmc2;   
+  float effTdata1; 
+  float effTdata2; 
+  std::vector<int> reg(regions.size());
+  std::vector<float> wgt(regions.size());
+  std::vector<WCFit> wcfit(regions.size());
+  int JECnbUp;
+  int JECnbDown;
 
   if (fname.Contains("TTTo2L2Nu") || fname.Contains("sys") || fname.Contains("TTBNV")) ifTopPt=true;
   if (fChain == 0) return;
@@ -684,7 +744,8 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
   Long64_t ntr = fChain->GetEntries ();
 
 //Loop over events
-  for (Long64_t jentry=0; jentry<nentries;jentry++) {
+//  for (Long64_t jentry=0; jentry<nentries;jentry++) {
+  for (Long64_t jentry=0; jentry<50000;jentry++) {
     Long64_t ientry = LoadTree(jentry);
     if (ientry < 0) break;
     nb = fChain->GetEntry(jentry);   nbytes += nb;
@@ -713,6 +774,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
     leptonPass = false;
     triggerPass = false;
     DyPass = false;
+    DyInZPass  = false;
     MetPass = false;
     ch =10;
     ttKFactor=1;
@@ -734,6 +796,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
     P_bjet_data =1;
     P_bjet_mc =1;
     MVAoutput=0;
+    mT2output=0;
     nbjetGen=0;
     nbjet=0;
     nbjetJerUp=0;
@@ -744,7 +807,11 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
     metUnclusMETDown=0;
     metUnclusMETPhiUp=0;
     metUnclusMETPhiDown=0;
-    myMET= MET_T1_pt;
+    if(year == "2016preVFP") METXYCorr = METXYCorr_Met_MetPhi(MET_pt, MET_phi, run, "2016APV", data == "mc", PV_npvs, true, false);
+    else if(year == "2016postVFP") METXYCorr = METXYCorr_Met_MetPhi(MET_pt, MET_phi, run, "2016nonAPV", data == "mc", PV_npvs, true, false);
+    else METXYCorr = METXYCorr_Met_MetPhi(MET_pt, MET_phi, run, year, data == "mc", PV_npvs, true, false);
+    myMETpt= METXYCorr.first;
+    myMETphi= METXYCorr.second;
 
     BJetSF=1;
     CJetSF=1;
@@ -766,6 +833,10 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
     LJetEff=1;
     mllLHE=0;
     weightSign=1;
+    effTmc1=1;
+    effTmc2=1;
+    effTdata1=1;
+    effTdata2=1;
    
     if (data == "mc" && fname.Contains("DY50")){
       for (int l=0;l<nLHEPart;l++){
@@ -776,12 +847,13 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       if(year == "2016preVFP" && mllLHE>200) continue;
       if(year != "2016preVFP" && year != "2016postVFP" && mllLHE>100) continue;
     }
-  
+ 
     for (int n=0;n<sys.size();++n){
       nominalWeights[n] =1;
       sysUpWeights[n] =1;
       sysDownWeights[n] =1;
     }
+
 //MET filters
 
     if (iseft) {
@@ -810,64 +882,69 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
     }
 
 //trigger MC
-    if(data == "mc" && (year == "2016preVFP" || year == "2016postVFP")){
-      if(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Ele27_WPTight_Gsf ) triggerPassEE =true;
-      if(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Ele27_WPTight_Gsf || HLT_IsoMu24 || HLT_IsoTkMu24) triggerPassEMu =true;
-      if(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL || HLT_IsoMu24 || HLT_IsoTkMu24) triggerPassMuMu =true;
+    if(data == "mc" && year == "2016preVFP"){
+      if(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Ele27_WPTight_Gsf || HLT_Photon175 ) triggerPassEE =true;
+      if(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Ele27_WPTight_Gsf || HLT_Photon175 || HLT_IsoMu24 || HLT_IsoTkMu24 || HLT_Mu50 || HLT_TkMu50) triggerPassEMu =true;
+      if(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL || HLT_IsoMu24 || HLT_IsoTkMu24 || HLT_Mu50 || HLT_TkMu50) triggerPassMuMu =true;
+    }
+
+    if(data == "mc" && year == "2016postVFP"){
+      if(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Ele27_WPTight_Gsf || HLT_Photon175 ) triggerPassEE =true;
+      if(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Ele27_WPTight_Gsf || HLT_Photon175 || HLT_IsoMu24 || HLT_IsoTkMu24 || HLT_Mu50 || HLT_TkMu50) triggerPassEMu =true;
+      if(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ || HLT_IsoMu24 || HLT_IsoTkMu24 || HLT_Mu50 || HLT_TkMu50) triggerPassMuMu =true;
     }
 
     if(data == "mc" && year == "2017"){
-      if(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Ele35_WPTight_Gsf) triggerPassEE =true;
-      if(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Ele35_WPTight_Gsf || HLT_IsoMu27) triggerPassEMu =true;
-      if(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass8 || HLT_IsoMu27) triggerPassMuMu =true;
+      if(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Ele35_WPTight_Gsf || HLT_Photon200) triggerPassEE =true;
+      if(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Ele35_WPTight_Gsf || HLT_Photon200 || HLT_IsoMu27 || HLT_Mu50 || HLT_TkMu100 || HLT_OldMu100) triggerPassEMu =true;
+      if(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass8 || HLT_IsoMu27 || HLT_Mu50 || HLT_TkMu100 || HLT_OldMu100) triggerPassMuMu =true;
     }
 
     if(data == "mc" && year == "2018"){
-      if(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Ele32_WPTight_Gsf) triggerPassEE =true;
-      if(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Ele32_WPTight_Gsf || HLT_IsoMu24) triggerPassEMu =true;
-      if(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass3p8 || HLT_IsoMu24) triggerPassMuMu =true;
+      if(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Ele32_WPTight_Gsf || HLT_Photon200) triggerPassEE =true;
+      if(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Ele32_WPTight_Gsf || HLT_Photon200 || HLT_IsoMu24 || HLT_Mu50 || HLT_TkMu100 || HLT_Mu100) triggerPassEMu =true;
+      if(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass3p8 || HLT_IsoMu24 || HLT_Mu50 || HLT_TkMu100 || HLT_Mu100) triggerPassMuMu =true;
     }
 
 //trigger DATA
+if(HLT_TkMu50)cout<<HLT_TkMu50<<endl;
     if(data == "data"){
-      if(year == "2016preVFP" || year == "2016postVFP"){
-        if(run == "H"){
-          if(dataset=="MuonEG"){
-            if(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ) triggerPassEMu =true;
-          }
-          if(dataset=="SingleElectron"){
-            if(!(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ) && HLT_Ele27_WPTight_Gsf) triggerPassEE =true;
-            if(!(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ) && HLT_Ele27_WPTight_Gsf) triggerPassEMu =true;
-          }
-          if(dataset=="SingleMuon"){
-            if(!(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ) && (HLT_IsoMu24 || HLT_IsoTkMu24)) triggerPassMuMu =true;
-            if(!(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Ele27_WPTight_Gsf) && (HLT_IsoMu24 || HLT_IsoTkMu24)) triggerPassEMu =true;
-          }
-          if(dataset=="DoubleEG"){
-            if(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ) triggerPassEE =true;
-          }
-          if(dataset=="DoubleMuon"){
-            if(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ) triggerPassMuMu =true;
-          }
+      if(year == "2016preVFP"){
+        if(dataset=="MuonEG"){
+          if(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL) triggerPassEMu =true;
         }
-        if(run != "H"){
-          if(dataset=="MuonEG"){
-            if(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL) triggerPassEMu =true;
-          }
-          if(dataset=="SingleElectron"){
-            if(!(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ) && HLT_Ele27_WPTight_Gsf) triggerPassEE =true;
-            if(!(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL) && HLT_Ele27_WPTight_Gsf) triggerPassEMu =true;
-          }
-          if(dataset=="SingleMuon"){
-            if(!(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL) && (HLT_IsoMu24 || HLT_IsoTkMu24)) triggerPassMuMu =true;
-            if(!(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Ele27_WPTight_Gsf) && (HLT_IsoMu24 || HLT_IsoTkMu24)) triggerPassEMu =true;
-          }
-          if(dataset=="DoubleEG"){
-            if(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ) triggerPassEE =true;
-          }
-          if(dataset=="DoubleMuon"){
-            if(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ) triggerPassMuMu =true;
-          }
+        if(dataset=="SingleElectron"){
+          if(!(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ) && (HLT_Ele27_WPTight_Gsf || HLT_Photon175)) triggerPassEE =true;
+          if(!(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL) && (HLT_Ele27_WPTight_Gsf || HLT_Photon175)) triggerPassEMu =true;
+        }
+        if(dataset=="SingleMuon"){
+          if(!(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL) && (HLT_IsoMu24 || HLT_IsoTkMu24 || HLT_Mu50 || HLT_TkMu50)) triggerPassMuMu =true;
+          if(!(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Ele27_WPTight_Gsf || HLT_Photon175) && (HLT_IsoMu24 || HLT_IsoTkMu24 || HLT_Mu50 || HLT_TkMu50)) triggerPassEMu =true;
+        }
+        if(dataset=="DoubleEG"){
+          if(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ) triggerPassEE =true;
+        }
+        if(dataset=="DoubleMuon"){
+          if(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL) triggerPassMuMu =true;
+        }
+      }
+      if(year == "2016postVFP"){
+        if(dataset=="MuonEG"){
+          if(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ) triggerPassEMu =true;
+        }
+        if(dataset=="SingleElectron"){
+          if(!(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ) && (HLT_Ele27_WPTight_Gsf||HLT_Photon175)) triggerPassEE =true;
+          if(!(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ) && (HLT_Ele27_WPTight_Gsf||HLT_Photon175)) triggerPassEMu =true;
+        }
+        if(dataset=="SingleMuon"){
+          if(!(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ) && (HLT_IsoMu24 || HLT_IsoTkMu24 || HLT_Mu50 || HLT_TkMu50)) triggerPassMuMu =true;
+          if(!(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Ele27_WPTight_Gsf || HLT_Photon175) && (HLT_IsoMu24 || HLT_IsoTkMu24 || HLT_Mu50 || HLT_TkMu50)) triggerPassEMu =true;
+        }
+        if(dataset=="DoubleEG"){
+          if(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ) triggerPassEE =true;
+        }
+        if(dataset=="DoubleMuon"){
+          if(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ) triggerPassMuMu =true;
         }
       }
       if(year == "2017"){
@@ -875,12 +952,12 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
           if(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL ) triggerPassEMu =true;
         }
         if(dataset=="SingleElectron"){
-          if(!HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL && HLT_Ele35_WPTight_Gsf) triggerPassEE =true;
-          if(!(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL) && HLT_Ele35_WPTight_Gsf) triggerPassEMu =true;
+          if(!HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL && (HLT_Ele35_WPTight_Gsf || HLT_Photon200)) triggerPassEE =true;
+          if(!(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL) && (HLT_Ele35_WPTight_Gsf || HLT_Photon200)) triggerPassEMu =true;
         }
         if(dataset=="SingleMuon"){
-           if(!HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass8 && HLT_IsoMu27) triggerPassMuMu =true;
-          if(!(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Ele35_WPTight_Gsf) && HLT_IsoMu27) triggerPassEMu =true;
+          if(!HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass8 && (HLT_IsoMu27 || HLT_Mu50 || HLT_TkMu100 || HLT_OldMu100)) triggerPassMuMu =true;
+          if(!(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Ele35_WPTight_Gsf || HLT_Photon200) && (HLT_IsoMu27 || HLT_Mu50 || HLT_TkMu100 || HLT_OldMu100)) triggerPassEMu =true;
         }
         if(dataset=="DoubleEG"){
           if(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL) triggerPassEE =true;
@@ -894,15 +971,15 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
           if(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL) triggerPassEMu =true;
         }
         if(dataset=="EGamma"){
-          if(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Ele32_WPTight_Gsf) triggerPassEE =true;
-          if(!(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL) && HLT_Ele32_WPTight_Gsf) triggerPassEMu =true;
+          if(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Ele32_WPTight_Gsf || HLT_Photon200) triggerPassEE =true;
+          if(!(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL) && (HLT_Ele32_WPTight_Gsf || HLT_Photon200)) triggerPassEMu =true;
         }
         if(dataset=="SingleMuon"){
-          if(!HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass3p8 && HLT_IsoMu24) triggerPassMuMu =true;
-          if(!(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Ele32_WPTight_Gsf) && HLT_IsoMu24) triggerPassEMu =true;
+          if(!HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass3p8 && (HLT_IsoMu24 || HLT_Mu50 || HLT_TkMu100 || HLT_Mu100)) triggerPassMuMu =true;
+          if(!(HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Ele32_WPTight_Gsf || HLT_Photon200) && (HLT_IsoMu24 || HLT_Mu50 || HLT_TkMu100 || HLT_Mu100)) triggerPassEMu =true;
         }
         if(dataset=="DoubleMuon"){
-          if(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass3p8) triggerPassMuMu =true;
+          if(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass3p8 || HLT_Mu50 || HLT_TkMu100 || HLT_Mu100) triggerPassMuMu =true;
         }
       }
     }
@@ -957,7 +1034,8 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       if(Muon_tkIsoId[l]<1) continue;
       muPtSFRochester =1;
 //      if(Muon_isPFcand || Muon_tunepRelPt[l]==1){
-      if(Muon_tunepRelPt[l]>0.99 && Muon_tunepRelPt[l]<1.01){
+//      if((Muon_tunepRelPt[l]>0.99 && Muon_tunepRelPt[l]<1.01) || Muon_pt[l]<200){
+      if(Muon_pt[l]<200){
         if(data == "data") {
           muPtSFRochester = rc.kScaleDT(Muon_charge[l], Muon_pt[l],Muon_eta[l],Muon_phi[l], 0, 0);
           if(muPtSFRochester * Muon_pt[l] > 20) selectedLeptons->push_back(new lepton_candidate(muPtSFRochester * Muon_pt[l],Muon_eta[l],Muon_phi[l],Muon_charge[l],l,10));
@@ -1015,8 +1093,8 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         }
       }
 //correct MET if the muon is not a PF muon
-      if(!Muon_isPFcand) myMET = sqrt(pow(myMET*cos(MET_T1_phi) - muPtSFRochester*Muon_tunepRelPt[l]*Muon_pt[l]*cos(Muon_phi[l]),2) + pow(myMET*sin(MET_T1_phi) - muPtSFRochester*Muon_tunepRelPt[l]*Muon_pt[l]*sin(Muon_phi[l]),2));
-      if(Muon_isPFcand &&  Muon_tunepRelPt[l]!=1) myMET = sqrt(pow(myMET*cos(MET_T1_phi) + ((1-Muon_tunepRelPt[l])*muPtSFRochester*Muon_pt[l]*cos(Muon_phi[l])),2) + pow(myMET*sin(MET_T1_phi) + ((1-Muon_tunepRelPt[l])* muPtSFRochester*Muon_pt[l]*sin(Muon_phi[l])),2));
+      if(!Muon_isPFcand) myMETpt = sqrt(pow(myMETpt*cos(myMETphi) - muPtSFRochester*Muon_tunepRelPt[l]*Muon_pt[l]*cos(Muon_phi[l]),2) + pow(myMETpt*sin(myMETphi) - muPtSFRochester*Muon_tunepRelPt[l]*Muon_pt[l]*sin(Muon_phi[l]),2));
+      if(Muon_isPFcand &&  Muon_tunepRelPt[l]!=1) myMETpt = sqrt(pow(myMETpt*cos(myMETphi) + ((1-Muon_tunepRelPt[l])*muPtSFRochester*Muon_pt[l]*cos(Muon_phi[l])),2) + pow(myMETpt*sin(myMETphi) + ((1-Muon_tunepRelPt[l])* muPtSFRochester*Muon_pt[l]*sin(Muon_phi[l])),2));
     }
     sort(selectedLeptons->begin(), selectedLeptons->end(), ComparePtLep);
     sort(selectedLeptonsMuScaleUp->begin(), selectedLeptonsMuScaleUp->end(), ComparePtLep);
@@ -1113,14 +1191,14 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       }
     }
 
-    MetJetsPtJesUp = sqrt(pow(myMET * cos(MET_T1_phi) - MetXJetsJesUp,2)+pow(myMET * sin(MET_T1_phi) - MetYJetsJesUp,2));
-    MetJetsPhiJesUp = atan2 ((myMET * sin(MET_T1_phi) - MetYJetsJesUp),(myMET * cos(MET_T1_phi) - MetXJetsJesUp));
-    MetJetsPtJesDown = sqrt(pow(myMET * cos(MET_T1_phi) - MetXJetsJesDown,2)+pow(myMET * sin(MET_T1_phi) - MetYJetsJesDown,2));
-    MetJetsPhiJesDown = atan2 ((myMET * sin(MET_T1_phi) - MetYJetsJesDown),(myMET * cos(MET_T1_phi) - MetXJetsJesDown));
-    MetJetsPtJerUp = sqrt(pow(myMET * cos(MET_T1_phi) - MetXJetsJerUp,2)+pow(myMET * sin(MET_T1_phi) - MetYJetsJerUp,2));
-    MetJetsPhiJerUp = atan2 ((myMET * sin(MET_T1_phi) - MetYJetsJerUp),(myMET * cos(MET_T1_phi) - MetXJetsJerUp));
-    MetJetsPtJerDown = sqrt(pow(myMET * cos(MET_T1_phi) - MetXJetsJerDown,2)+pow(myMET * sin(MET_T1_phi) - MetYJetsJerDown,2));
-    MetJetsPhiJerDown = atan2 ((myMET * sin(MET_T1_phi) - MetYJetsJerDown),(myMET * cos(MET_T1_phi) - MetXJetsJerDown));
+    MetJetsPtJesUp = sqrt(pow(myMETpt * cos(myMETphi) - MetXJetsJesUp,2)+pow(myMETpt * sin(myMETphi) - MetYJetsJesUp,2));
+    MetJetsPhiJesUp = atan2 ((myMETpt * sin(myMETphi) - MetYJetsJesUp),(myMETpt * cos(myMETphi) - MetXJetsJesUp));
+    MetJetsPtJesDown = sqrt(pow(myMETpt * cos(myMETphi) - MetXJetsJesDown,2)+pow(myMETpt * sin(myMETphi) - MetYJetsJesDown,2));
+    MetJetsPhiJesDown = atan2 ((myMETpt * sin(myMETphi) - MetYJetsJesDown),(myMETpt * cos(myMETphi) - MetXJetsJesDown));
+    MetJetsPtJerUp = sqrt(pow(myMETpt * cos(myMETphi) - MetXJetsJerUp,2)+pow(myMETpt * sin(myMETphi) - MetYJetsJerUp,2));
+    MetJetsPhiJerUp = atan2 ((myMETpt * sin(myMETphi) - MetYJetsJerUp),(myMETpt * cos(myMETphi) - MetXJetsJerUp));
+    MetJetsPtJerDown = sqrt(pow(myMETpt * cos(myMETphi) - MetXJetsJerDown,2)+pow(myMETpt * sin(myMETphi) - MetYJetsJerDown,2));
+    MetJetsPhiJerDown = atan2 ((myMETpt * sin(myMETphi) - MetYJetsJerDown),(myMETpt * cos(myMETphi) - MetXJetsJerDown));
 
     sort(selectedJets->begin(), selectedJets->end(), ComparePtJet);
     sort(selectedJetsJerUp->begin(), selectedJetsJerUp->end(), ComparePtJet);
@@ -1188,15 +1266,15 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         sort(JECJetsDown->begin(), JECJetsDown->end(), ComparePtJet);
         JECsysUp->push_back(*JECJetsUp);
         JECsysDown->push_back(*JECJetsDown);
-        JECsysMETUp->push_back(sqrt(pow(myMET * cos(MET_T1_phi) - JECMETUpx,2)+pow(myMET * sin(MET_T1_phi) - JECMETUpy,2)));
-        JECsysMETDown->push_back(sqrt(pow(myMET * cos(MET_T1_phi) - JECMETDownx,2)+pow(myMET * sin(MET_T1_phi) - JECMETDowny,2)));
-        JECsysMETPhiUp->push_back(atan2 ((myMET * sin(MET_T1_phi) - JECMETUpx),(myMET * cos(MET_T1_phi) - JECMETUpy)));
-        JECsysMETPhiDown->push_back(atan2 ((myMET * sin(MET_T1_phi) - JECMETDownx),(myMET * cos(MET_T1_phi) - JECMETDowny)));
+        JECsysMETUp->push_back(sqrt(pow(myMETpt * cos(myMETphi) - JECMETUpx,2)+pow(myMETpt * sin(myMETphi) - JECMETUpy,2)));
+        JECsysMETDown->push_back(sqrt(pow(myMETpt * cos(myMETphi) - JECMETDownx,2)+pow(myMETpt * sin(myMETphi) - JECMETDowny,2)));
+        JECsysMETPhiUp->push_back(atan2 ((myMETpt * sin(myMETphi) - JECMETUpx),(myMETpt * cos(myMETphi) - JECMETUpy)));
+        JECsysMETPhiDown->push_back(atan2 ((myMETpt * sin(myMETphi) - JECMETDownx),(myMETpt * cos(myMETphi) - JECMETDowny)));
       }
     
       for (int n=0;n<sysJecNames.size();++n){
-        int JECnbUp = 0;
-        int JECnbDown = 0;
+        JECnbUp = 0;
+        JECnbDown = 0;
         for (int i=0;i<(*JECsysUp)[n].size();i++){
           if((*JECsysUp)[n][i]->btag_) JECnbUp++;
         }
@@ -1351,10 +1429,10 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
     }
 
 //MET Unc 
-    metUnclusMETUp = sqrt(pow(myMET * cos(MET_T1_phi) + MET_MetUnclustEnUpDeltaX,2)+pow(myMET * sin(MET_T1_phi) + MET_MetUnclustEnUpDeltaY,2));
-    metUnclusMETDown = sqrt(pow(myMET * cos(MET_T1_phi) + MET_MetUnclustEnUpDeltaX,2)+pow(myMET * sin(MET_T1_phi) + MET_MetUnclustEnUpDeltaY,2));
-    metUnclusMETPhiUp = atan2 ((myMET * sin(MET_T1_phi) + MET_MetUnclustEnUpDeltaY),(myMET * cos(MET_T1_phi) + MET_MetUnclustEnUpDeltaX));
-    metUnclusMETPhiDown = atan2 ((myMET * sin(MET_T1_phi) + MET_MetUnclustEnUpDeltaY),(myMET * cos(MET_T1_phi) + MET_MetUnclustEnUpDeltaX));
+    metUnclusMETUp = sqrt(pow(myMETpt * cos(myMETphi) + MET_MetUnclustEnUpDeltaX,2)+pow(myMETpt * sin(myMETphi) + MET_MetUnclustEnUpDeltaY,2));
+    metUnclusMETDown = sqrt(pow(myMETpt * cos(myMETphi) + MET_MetUnclustEnUpDeltaX,2)+pow(myMETpt * sin(myMETphi) + MET_MetUnclustEnUpDeltaY,2));
+    metUnclusMETPhiUp = atan2 ((myMETpt * sin(myMETphi) + MET_MetUnclustEnUpDeltaY),(myMETpt * cos(myMETphi) + MET_MetUnclustEnUpDeltaX));
+    metUnclusMETPhiDown = atan2 ((myMETpt * sin(myMETphi) + MET_MetUnclustEnUpDeltaY),(myMETpt * cos(myMETphi) + MET_MetUnclustEnUpDeltaX));
 //PU reweighting
     if (data == "mc" && year == "2016preVFP") {
       weight_PU = wPU.PU_2016preVFP(int(Pileup_nTrueInt),"nominal");
@@ -1380,8 +1458,6 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       sysUpWeights[6] = wPU.PU_2018(int(Pileup_nTrueInt),"up");
       sysDownWeights[6] = wPU.PU_2018(int(Pileup_nTrueInt),"down");
     }
-
-
     if (data == "mc") weight_Lumi = (1000*xs*lumi)/Nevent;
     if (data == "mc"){
         weight_prefiring = L1PreFiringWeight_Nom;
@@ -1411,14 +1487,15 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
 //Check if analysis cuts are passed and then categorize dilepton channels
     if(selectedLeptons->size() ==2){ 
       if (((*selectedLeptons)[0]->pt_ > 25) && ((*selectedLeptons)[0]->charge_ * (*selectedLeptons)[1]->charge_ == -1) && ((*selectedLeptons)[0]->p4_ + (*selectedLeptons)[1]->p4_).M()>20) leptonPass=true;  
-      if ((*selectedLeptons)[0]->lep_ + (*selectedLeptons)[1]->lep_ == 2) ch = 0;
-      if ((*selectedLeptons)[0]->lep_ + (*selectedLeptons)[1]->lep_ == 11) ch = 1;
-      if ((*selectedLeptons)[0]->lep_ + (*selectedLeptons)[1]->lep_ == 20) ch = 2;
+      if ((*selectedLeptons)[0]->lep_ + (*selectedLeptons)[1]->lep_ == 2 && triggerPassEE) ch = 0;
+      if ((*selectedLeptons)[0]->lep_ + (*selectedLeptons)[1]->lep_ == 11 && triggerPassEMu) ch = 1;
+      if ((*selectedLeptons)[0]->lep_ + (*selectedLeptons)[1]->lep_ == 20 && triggerPassMuMu) ch = 2;
       if (ch ==0 && triggerPassEE) triggerPass=true;
       if (ch ==1 && triggerPassEMu) triggerPass=true;
       if (ch ==2 && triggerPassMuMu) triggerPass=true;
-      if (((*selectedLeptons)[0]->p4_ + (*selectedLeptons)[1]->p4_).M()>106 ) DyPass = true;
-      if (myMET > MetCut) MetPass = true;
+      if (((*selectedLeptons)[0]->p4_ + (*selectedLeptons)[1]->p4_).M()>106) DyPass = true;
+      if (((*selectedLeptons)[0]->p4_ + (*selectedLeptons)[1]->p4_).M()<106 && ((*selectedLeptons)[0]->p4_ + (*selectedLeptons)[1]->p4_).M()>76) DyInZPass=true;
+      if (myMETpt > MetCut) MetPass = true;
       if (data == "mc" && ch==0) {
         sf_Trigger = scale_factor(&sf_triggeree_H, (*selectedLeptons)[0]->pt_, (*selectedLeptons)[1]->pt_,"central",false, true);
         nominalWeights[8] = scale_factor(&sf_triggeree_H, (*selectedLeptons)[0]->pt_, (*selectedLeptons)[1]->pt_,"central",false, true);
@@ -1436,37 +1513,29 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         nominalWeights[8] = scale_factor(&sf_triggermumu_H, (*selectedLeptons)[0]->pt_, (*selectedLeptons)[1]->pt_,"central",false, true);
         sysUpWeights[8] = scale_factor(&sf_triggermumu_H, (*selectedLeptons)[0]->pt_, (*selectedLeptons)[1]->pt_,"up",false, true);
         sysDownWeights[8] = scale_factor(&sf_triggermumu_H, (*selectedLeptons)[0]->pt_, (*selectedLeptons)[1]->pt_,"down",false, true);
+        if((*selectedLeptons)[0]->pt_>60 && (*selectedLeptons)[1]->pt_>60){
+          effTmc1 = scale_factor(&eff_triggermumu_mc_H, (*selectedLeptons)[0]->pt_, abs((*selectedLeptons)[0]->eta_),"central",false, true);
+          effTmc2 = scale_factor(&eff_triggermumu_mc_H, (*selectedLeptons)[1]->pt_, abs((*selectedLeptons)[1]->eta_),"central",false, true);
+          effTdata1 = scale_factor(&eff_triggermumu_data_H, (*selectedLeptons)[0]->pt_, abs((*selectedLeptons)[0]->eta_),"central",false, true);
+          effTdata2 = scale_factor(&eff_triggermumu_data_H, (*selectedLeptons)[1]->pt_, abs((*selectedLeptons)[1]->eta_),"central",false, true);
+          sf_Trigger = ((1-((1-effTdata1)*(1-effTdata2)))/(1-((1-effTmc1)*(1-effTmc2))));
+          nominalWeights[8] = (1-((1-effTdata1)*(1-effTdata2)))/(1-((1-effTmc1)*(1-effTmc2)));
+          sysUpWeights[8] = (1-((1-effTdata1)*(1-effTdata2)))/(1-((1-effTmc1)*(1-effTmc2)));
+          sysDownWeights[8] = (1-((1-effTdata1)*(1-effTdata2)))/(1-((1-effTmc1)*(1-effTmc2)));
+        }
+//        if((*selectedLeptons)[0]->pt_>60) cout<<(*selectedLeptons)[0]->pt_<<":"<<(*selectedLeptons)[1]->pt_<<":"<<(1-((1-effTdata1)*(1-effTdata2)))/(1-((1-effTmc1)*(1-effTmc2)))<<"::"<<sf_Trigger<<endl;
+    
       }
 //Fill histograms
       if (data == "mc"){
-        if(!fname.Contains("pythia")) weightSign == signnum_typical(LHEWeight_originalXWGTUP);
+        if(!fname.Contains("pythia")) weightSign = signnum_typical(LHEWeight_originalXWGTUP);
         weight_lep  = weight_Lumi * weightSign * sf_Ele_Reco * sf_Ele_ID * sf_Mu_ID * sf_Mu_ISO * sf_Trigger * weight_PU * weight_prefiring * weight_topPtPowheg * ttKFactor * sf_JetPuId;
         weight_lepB = weight_lep * (P_bjet_data/P_bjet_mc);
         weight_EFT = lumi * (1000.0/nRuns)  * sf_Ele_Reco * sf_Ele_ID * sf_Mu_ID * sf_Mu_ISO* (P_bjet_data/P_bjet_mc) * sf_Trigger * weight_PU * weight_prefiring * weight_topPtPowheg * ttKFactor * sf_JetPuId;
       }
       if (iseft) eft_fit = new WCFit(nWCnames, wc_names_lst, nEFTfitCoefficients, EFTfitCoefficients, weight_EFT);
       else eft_fit = new WCFit(0,wc_names_lst,1, &genWeight, 1.0);
-      reg = std::vector<int>();
-      wgt = std::vector<float>();
-      wcfit = std::vector<WCFit>();
-      //reg.shrink_to_fit();
-      //wgt.shrink_to_fit();
-      //wcfit.shrink_to_fit();
-      if(leptonPass && triggerPass){
-        reg.push_back(0);
-        wgt.push_back(weight_lep);
-        wcfit.push_back(*eft_fit);
-      }
-      if(leptonPass && triggerPass && MetPass && DyPass){
-        reg.push_back(1);
-        wgt.push_back(weight_lep);
-        wcfit.push_back(*eft_fit);
-      }
-  
-      if(leptonPass && triggerPass && DyPass && MetPass && nbjet==1){
-        reg.push_back(2);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
+      if(nbjet==1){
         recoL2 = (*selectedLeptons)[1]->p4_;
         for (int l=0;l<selectedJets->size();l++){
           if((*selectedJets)[l]->btag_){
@@ -1474,7 +1543,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
             break;
           }
         }
-        recoNu = Wneutrino(myMET, MET_T1_phi, (*selectedLeptons)[1]->pt_, (*selectedLeptons)[1]->eta_, (*selectedLeptons)[1]->phi_);
+        recoNu = Wneutrino(myMETpt, myMETphi, (*selectedLeptons)[1]->pt_, (*selectedLeptons)[1]->eta_, (*selectedLeptons)[1]->phi_);
         recoW = recoNu + recoL2;
         recoTop = recoW + recoBjet;
         MVA_lep1Pt=(*selectedLeptons)[0]->pt_;
@@ -1488,6 +1557,30 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         MVA_topL1DptOsumPt=(abs((*selectedLeptons)[0]->pt_ - recoTop.Pt()))/((*selectedLeptons)[0]->pt_ + recoTop.Pt());
         MVA_topPt=recoTop.Pt();
         MVAoutput = readerMVA->EvaluateMVA( "BDTG");
+//MT2 taken from https://www.hep.phy.cam.ac.uk/~lester/mt2/#Alternatives
+        mT2output =  asymm_mt2_lester_bisect::get_mT2(
+           0.0, (*selectedLeptons)[0]->pt_*cos((*selectedLeptons)[0]->phi_), (*selectedLeptons)[0]->pt_*sin((*selectedLeptons)[0]->phi_),
+           0.0, (*selectedLeptons)[1]->pt_*cos((*selectedLeptons)[1]->phi_), (*selectedLeptons)[1]->pt_*sin((*selectedLeptons)[1]->phi_),
+           myMETpt*cos(myMETphi), myMETpt*sin(myMETphi),
+           0.0, 0.0,
+           0.0);
+      }
+      resetVec(reg);
+      if(leptonPass && triggerPass){
+        reg[0]=0;
+        wgt[0]=weight_lep;
+        wcfit[0]=*eft_fit;
+        if (data == "mc") truePU->Fill(Pileup_nTrueInt);
+      }
+      if(leptonPass && triggerPass && MetPass && DyPass){
+        reg[1]=1;
+        wgt[1]=weight_lep;
+        wcfit[1]=*eft_fit;
+      }
+      if(leptonPass && triggerPass && DyPass && MetPass && nbjet==1){
+        reg[2]=2;
+        wgt[2]=weight_lepB;
+        wcfit[2]=*eft_fit;
         lep1Pt_=(*selectedLeptons)[0]->pt_;
         lep1Eta_=(*selectedLeptons)[0]->eta_;
         lep2Pt_=(*selectedLeptons)[1]->pt_;
@@ -1504,13 +1597,39 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         topL1DptOsumPt_=(abs((*selectedLeptons)[0]->pt_ - recoTop.Pt()))/((*selectedLeptons)[0]->pt_ + recoTop.Pt());
         topPt_=recoTop.Pt();
         weight_=weight_lepB;
-        tree_out.Fill() ;
+        BDToutput_=MVAoutput;
+        tree_out.Fill();
+
+//        if(MVAoutput>0.9) {
+//          cout<<(*selectedLeptons)[0]->pt_<<","<<(*selectedLeptons)[1]->pt_<<":"<< (*selectedLeptons)[0]->eta_<<","<<(*selectedLeptons)[1]->eta_<<" -weight="<<weight_lepB<<endl;
+//          cout<< weight_Lumi<<","<<weightSign<<","<<sf_Ele_Reco<<","<<sf_Ele_ID<<","<<sf_Mu_ID<<","<<sf_Mu_ISO<<","<<sf_Trigger<<","<<weight_PU<<","<<weight_prefiring<<","<<weight_topPtPowheg<<","<<ttKFactor<<","<<sf_JetPuId<<","<<(P_bjet_data/P_bjet_mc)<<endl;
+//        }
       }
   
       if(leptonPass && triggerPass && MetPass && DyPass && nbjet>1){
-        reg.push_back(3);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
+        reg[3]=3;
+        wgt[3]=weight_lepB;
+        wcfit[3]=*eft_fit;
+      }
+      if(leptonPass && triggerPass && MetPass && DyInZPass && nbjet==1 && ifCR && !ifSys){
+        reg[getVecPos(regions,"llB1InZ")]=getVecPos(regions,"llB1InZ");
+        wgt[getVecPos(regions,"llB1InZ")]=weight_lepB;
+        wcfit[getVecPos(regions,"llB1InZ")]=*eft_fit;
+      }
+      if(leptonPass && triggerPass && DyPass && MetPass && nbjet==1 && MVAoutput<0 && ifCR && !ifSys){
+        reg[getVecPos(regions,"llB1-BDTm1to0")]=getVecPos(regions,"llB1-BDTm1to0");
+        wgt[getVecPos(regions,"llB1-BDTm1to0")]=weight_lepB;
+        wcfit[getVecPos(regions,"llB1-BDTm1to0")]=*eft_fit;
+      }
+      if(leptonPass && triggerPass && DyPass && MetPass && nbjet==1 && MVAoutput>0 && MVAoutput<0.8 && ifCR && !ifSys){
+        reg[getVecPos(regions,"llB1-BDT0to0p8")]=getVecPos(regions,"llB1-BDT0to0p8");
+        wgt[getVecPos(regions,"llB1-BDT0to0p8")]=weight_lepB;
+        wcfit[getVecPos(regions,"llB1-BDT0to0p8")]=*eft_fit;
+      }
+      if(leptonPass && triggerPass && DyPass && MetPass && nbjet==1 && MVAoutput>0.8 && ifCR && !ifSys){
+        reg[getVecPos(regions,"llB1-BDT0p8to1")]=getVecPos(regions,"llB1-BDT0p8to1");
+        wgt[getVecPos(regions,"llB1-BDT0p8to1")]=weight_lepB;
+        wcfit[getVecPos(regions,"llB1-BDT0p8to1")]=*eft_fit;
       }
       FillD3Hists(Hists, ch, reg, vInd(vars,"lep1Pt"), (*selectedLeptons)[0]->pt_ ,wgt, wcfit);
       FillD3Hists(Hists, ch, reg, vInd(vars,"lep1Eta"), (*selectedLeptons)[0]->eta_ ,wgt, wcfit); 
@@ -1524,8 +1643,8 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       FillD3Hists(Hists, ch, reg, vInd(vars,"llDphi"), abs(deltaPhi((*selectedLeptons)[0]->phi_,(*selectedLeptons)[1]->phi_)) ,wgt, wcfit); 
       FillD3Hists(Hists, ch, reg, vInd(vars,"njet"), selectedJets->size() ,wgt, wcfit); 
       FillD3Hists(Hists, ch, reg, vInd(vars,"nbjet"), nbjet ,wgt, wcfit); 
-      FillD3Hists(Hists, ch, reg, vInd(vars,"Met"), myMET ,wgt, wcfit);
-      FillD3Hists(Hists, ch, reg, vInd(vars,"MetPhi"), MET_T1_phi ,wgt, wcfit);
+      FillD3Hists(Hists, ch, reg, vInd(vars,"Met"), myMETpt ,wgt, wcfit);
+      FillD3Hists(Hists, ch, reg, vInd(vars,"MetPhi"), myMETphi ,wgt, wcfit);
       FillD3Hists(Hists, ch, reg, vInd(vars,"nVtx"), PV_npvs ,wgt, wcfit);
       FillD3Hists(Hists, ch, reg, vInd(vars,"llMZw"), ((*selectedLeptons)[0]->p4_ + (*selectedLeptons)[1]->p4_).M() ,wgt, wcfit);
       FillD3Hists(Hists, ch, reg, vInd(vars,"BDT"), MVAoutput ,wgt, wcfit);
@@ -1534,6 +1653,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       FillD3Hists(Hists, ch, reg, vInd(vars,"topL1Dr"), deltaR((*selectedLeptons)[0]->eta_,(*selectedLeptons)[0]->phi_,recoTop.Eta(),recoTop.Phi()) ,wgt, wcfit);
       FillD3Hists(Hists, ch, reg, vInd(vars,"topL1DptOsumPt"), (abs((*selectedLeptons)[0]->pt_ - recoTop.Pt()))/((*selectedLeptons)[0]->pt_ + recoTop.Pt()) ,wgt, wcfit);
       FillD3Hists(Hists, ch, reg, vInd(vars,"topPt"), recoTop.Pt() ,wgt, wcfit);
+      FillD3Hists(Hists, ch, reg, vInd(vars,"mT2"), mT2output ,wgt, wcfit);
       if(selectedJets->size()>0){
         FillD3Hists(Hists, ch, reg, vInd(vars,"jet1Pt"), (*selectedJets)[0]->pt_ ,wgt, wcfit);
         FillD3Hists(Hists, ch, reg, vInd(vars,"jet1Eta"), (*selectedJets)[0]->eta_ ,wgt, wcfit);
@@ -1541,28 +1661,16 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       }
       delete eft_fit;
     }
-    if (data != "mc" || fname.Contains("sys") || (!ifSysNeeded(selectedLeptons, 106) && !ifSysNeeded(selectedLeptonsMuScaleUp, 106) && !ifSysNeeded(selectedLeptonsMuScaleDown, 106) && !ifSysNeeded(selectedLeptonsMuResDown, 106) && !ifSysNeeded(selectedLeptonsMuResUp, 106) && !ifSysNeeded(selectedLeptonsEleScaleUp, 106) && !ifSysNeeded(selectedLeptonsEleScaleDown, 106)) || myMET<50){
-      for (int l=0;l<selectedLeptons->size();l++){
-        delete (*selectedLeptons)[l];
-      }
-      for (int l=0;l<selectedLeptonsMuScaleUp->size();l++){
-        delete (*selectedLeptonsMuScaleUp)[l];
-      }
-      for (int l=0;l<selectedLeptonsMuScaleDown->size();l++){
-        delete (*selectedLeptonsMuScaleDown)[l];
-      }
-      for (int l=0;l<selectedLeptonsEleScaleUp->size();l++){
-        delete (*selectedLeptonsEleScaleUp)[l];
-      }
-      for (int l=0;l<selectedLeptonsEleScaleDown->size();l++){
-        delete (*selectedLeptonsEleScaleDown)[l];
-      }
-      for (int l=0;l<selectedLeptonsMuResUp->size();l++){
-        delete (*selectedLeptonsMuResUp)[l];
-      }
-      for (int l=0;l<selectedLeptonsMuResDown->size();l++){
-        delete (*selectedLeptonsMuResDown)[l];
-      }
+    if (data != "mc" || fname.Contains("sys") || !ifSys){
+//    if (data != "mc" || fname.Contains("sys") || (!ifSysNeeded(selectedLeptons, 106) && !ifSysNeeded(selectedLeptonsMuScaleUp, 106) && !ifSysNeeded(selectedLeptonsMuScaleDown, 106) && !ifSysNeeded(selectedLeptonsMuResDown, 106) && !ifSysNeeded(selectedLeptonsMuResUp, 106) && !ifSysNeeded(selectedLeptonsEleScaleUp, 106) && !ifSysNeeded(selectedLeptonsEleScaleDown, 106)) || myMETpt<50){
+      for (int l=0;l<selectedLeptons->size();l++) delete (*selectedLeptons)[l];
+      for (int l=0;l<selectedLeptonsMuScaleUp->size();l++) delete (*selectedLeptonsMuScaleUp)[l];
+      for (int l=0;l<selectedLeptonsMuScaleDown->size();l++) delete (*selectedLeptonsMuScaleDown)[l];
+      for (int l=0;l<selectedLeptonsEleScaleUp->size();l++) delete (*selectedLeptonsEleScaleUp)[l];
+      for (int l=0;l<selectedLeptonsEleScaleDown->size();l++) delete (*selectedLeptonsEleScaleDown)[l];
+      for (int l=0;l<selectedLeptonsMuResUp->size();l++) delete (*selectedLeptonsMuResUp)[l];
+      for (int l=0;l<selectedLeptonsMuResDown->size();l++) delete (*selectedLeptonsMuResDown)[l];
+      
       selectedLeptons->clear();
       selectedLeptons->shrink_to_fit();
       delete selectedLeptons;
@@ -1585,21 +1693,11 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       selectedLeptonsEleScaleDown->shrink_to_fit();
       delete selectedLeptonsEleScaleDown;
   
-      for (int l=0;l<selectedJets->size();l++){
-        delete (*selectedJets)[l];
-      }
-      for (int l=0;l<selectedJetsJerUp->size();l++){
-        delete (*selectedJetsJerUp)[l];
-      }
-      for (int l=0;l<selectedJetsJerDown->size();l++){
-        delete (*selectedJetsJerDown)[l];
-      }
-      for (int l=0;l<selectedJetsJesUp->size();l++){
-        delete (*selectedJetsJesUp)[l];
-      }
-      for (int l=0;l<selectedJetsJesDown->size();l++){
-        delete (*selectedJetsJesDown)[l];
-      }
+      for (int l=0;l<selectedJets->size();l++) delete (*selectedJets)[l];
+      for (int l=0;l<selectedJetsJerUp->size();l++) delete (*selectedJetsJerUp)[l];
+      for (int l=0;l<selectedJetsJerDown->size();l++) delete (*selectedJetsJerDown)[l];
+      for (int l=0;l<selectedJetsJesUp->size();l++) delete (*selectedJetsJesUp)[l];
+      for (int l=0;l<selectedJetsJesDown->size();l++) delete (*selectedJetsJesDown)[l];
   
       selectedJets->clear();
       selectedJets->shrink_to_fit();
@@ -1657,24 +1755,17 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       delete JECsysMETPhiDown;
       continue;
     }
+
 //include systematic histograms
-    if(selectedLeptons->size() ==2 && leptonPass && triggerPass && MetPass && DyPass){
-      reg = std::vector<int>();
-      //reg.shrink_to_fit();
-      if(leptonPass && triggerPass && DyPass && MetPass && nbjet==1) reg.push_back(2);
-      if(leptonPass && triggerPass && MetPass && DyPass && nbjet>1) reg.push_back(3);
-      
+    if(ch<10 && selectedLeptons->size() ==2 && useRegions(reg)){
       for (int n=0;n<sys.size();++n){
         if (n>8 && n<15) continue;
         if (iseft) eft_fit = new WCFit(nWCnames, wc_names_lst, nEFTfitCoefficients, EFTfitCoefficients, weight_EFT* (sysUpWeights[n]/nominalWeights[n]));
         else eft_fit = new WCFit(0,wc_names_lst,1, &genWeight, 1.0);
-        wgt = std::vector<float>();
-        //wgt.shrink_to_fit();
-        wcfit = std::vector<WCFit>();
-        //wcfit.shrink_to_fit();
         for(int l=0;l<reg.size();++l){
-          wgt.push_back(weight_lepB* (sysUpWeights[n]/nominalWeights[n]));
-          wcfit.push_back(*eft_fit);
+          if(l<2)  wgt[l]=(weight_lep* (sysUpWeights[n]/nominalWeights[n]));
+          else wgt[l]=(weight_lepB* (sysUpWeights[n]/nominalWeights[n]));
+          wcfit[l]=*eft_fit;
         }
 
         FillD4Hists(HistsSysUp, ch, reg, vInd(vars,"lep1Pt"), n, (*selectedLeptons)[0]->pt_ ,wgt, wcfit);
@@ -1689,8 +1780,8 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         FillD4Hists(HistsSysUp, ch, reg, vInd(vars,"llDphi"), n, abs(deltaPhi((*selectedLeptons)[0]->phi_,(*selectedLeptons)[1]->phi_)) ,wgt, wcfit);
         FillD4Hists(HistsSysUp, ch, reg, vInd(vars,"njet"), n, selectedJets->size() ,wgt, wcfit);
         FillD4Hists(HistsSysUp, ch, reg, vInd(vars,"nbjet"), n, nbjet ,wgt, wcfit);
-        FillD4Hists(HistsSysUp, ch, reg, vInd(vars,"Met"), n, myMET ,wgt, wcfit);
-        FillD4Hists(HistsSysUp, ch, reg, vInd(vars,"MetPhi"), n, MET_T1_phi ,wgt, wcfit);
+        FillD4Hists(HistsSysUp, ch, reg, vInd(vars,"Met"), n, myMETpt ,wgt, wcfit);
+        FillD4Hists(HistsSysUp, ch, reg, vInd(vars,"MetPhi"), n, myMETphi ,wgt, wcfit);
         FillD4Hists(HistsSysUp, ch, reg, vInd(vars,"nVtx"), n, PV_npvs ,wgt, wcfit);
         FillD4Hists(HistsSysUp, ch, reg, vInd(vars,"llMZw"), n, ((*selectedLeptons)[0]->p4_ + (*selectedLeptons)[1]->p4_).M() ,wgt, wcfit);
         FillD4Hists(HistsSysUp, ch, reg, vInd(vars,"BDT"), n, MVAoutput ,wgt, wcfit);
@@ -1707,13 +1798,10 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         delete eft_fit;
         if (iseft) eft_fit = new WCFit(nWCnames, wc_names_lst, nEFTfitCoefficients, EFTfitCoefficients, weight_EFT* (sysDownWeights[n]/nominalWeights[n]));
         else eft_fit = new WCFit(0,wc_names_lst,1, &genWeight, 1.0);
-        wgt = std::vector<float>();
-        //wgt.shrink_to_fit();
-        wcfit = std::vector<WCFit>();
-        //wcfit.shrink_to_fit();
         for(int l=0;l<reg.size();++l){
-          wgt.push_back(weight_lepB* (sysDownWeights[n]/nominalWeights[n]));
-          wcfit.push_back(*eft_fit);
+          if(l<2) wgt[l]=(weight_lep* (sysDownWeights[n]/nominalWeights[n]));
+          else wgt[l]=(weight_lepB* (sysDownWeights[n]/nominalWeights[n]));
+          wcfit[l]=*eft_fit;
         }
         FillD4Hists(HistsSysDown, ch, reg, vInd(vars,"lep1Pt"), n, (*selectedLeptons)[0]->pt_ ,wgt, wcfit);
         FillD4Hists(HistsSysDown, ch, reg, vInd(vars,"lep1Eta"), n, (*selectedLeptons)[0]->eta_ ,wgt, wcfit);
@@ -1727,8 +1815,8 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         FillD4Hists(HistsSysDown, ch, reg, vInd(vars,"llDphi"), n, abs(deltaPhi((*selectedLeptons)[0]->phi_,(*selectedLeptons)[1]->phi_)) ,wgt, wcfit);
         FillD4Hists(HistsSysDown, ch, reg, vInd(vars,"njet"), n, selectedJets->size() ,wgt, wcfit);
         FillD4Hists(HistsSysDown, ch, reg, vInd(vars,"nbjet"), n, nbjet ,wgt, wcfit);
-        FillD4Hists(HistsSysDown, ch, reg, vInd(vars,"Met"), n, myMET ,wgt, wcfit);
-        FillD4Hists(HistsSysDown, ch, reg, vInd(vars,"MetPhi"), n, MET_T1_phi ,wgt, wcfit);
+        FillD4Hists(HistsSysDown, ch, reg, vInd(vars,"Met"), n, myMETpt ,wgt, wcfit);
+        FillD4Hists(HistsSysDown, ch, reg, vInd(vars,"MetPhi"), n, myMETphi ,wgt, wcfit);
         FillD4Hists(HistsSysDown, ch, reg, vInd(vars,"nVtx"), n, PV_npvs ,wgt, wcfit);
         FillD4Hists(HistsSysDown, ch, reg, vInd(vars,"llMZw"), n, ((*selectedLeptons)[0]->p4_ + (*selectedLeptons)[1]->p4_).M() ,wgt, wcfit);
         FillD4Hists(HistsSysDown, ch, reg, vInd(vars,"BDT"), n, MVAoutput ,wgt, wcfit);
@@ -1746,21 +1834,16 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       }
 //PDF, QS, PS
       if ((fname.Contains("TTTo2L2Nu")&& !fname.Contains("sys")) || fname.Contains("BNV")){
-        reg = std::vector<int>();
-        //reg.shrink_to_fit();
-        if(leptonPass && triggerPass && DyPass && MetPass && nbjet==1) reg.push_back(0);
-        if(leptonPass && triggerPass && MetPass && DyPass && nbjet>1) reg.push_back(1);
+         resetVec(reg);
+        if(leptonPass && triggerPass && DyPass && MetPass && nbjet==1) reg[0]=0;
+        if(leptonPass && triggerPass && MetPass && DyPass && nbjet>1) reg[1]=1;
         for (int n=0;n<nScale;++n){
           if(isnan(LHEScaleWeight[n]) || isinf(LHEScaleWeight[n])) continue;
           if (iseft) eft_fit = new WCFit(nWCnames, wc_names_lst, nEFTfitCoefficients, EFTfitCoefficients, weight_EFT* LHEScaleWeight[n]);
           else eft_fit = new WCFit(0,wc_names_lst,1, &genWeight, 1.0);
-          wgt = std::vector<float>();
-          //wgt.shrink_to_fit();
-          wcfit = std::vector<WCFit>();
-          //wcfit.shrink_to_fit();
           for(int l=0;l<reg.size();++l){
-            wgt.push_back(weight_lepB * LHEScaleWeight[n]);
-            wcfit.push_back(*eft_fit);
+            wgt[l]=(weight_lepB * LHEScaleWeight[n]);
+            wcfit[l]=*eft_fit;
           }
           FillD4Hists(HistsSysReweightsQscale, ch, reg, 0, n, MVAoutput ,wgt, wcfit);
           delete eft_fit;
@@ -1769,13 +1852,9 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
           if(isnan(LHEPdfWeight[n]) || isinf(LHEPdfWeight[n])) continue;
           if (iseft) eft_fit = new WCFit(nWCnames, wc_names_lst, nEFTfitCoefficients, EFTfitCoefficients, weight_EFT* LHEPdfWeight[n]);
           else eft_fit = new WCFit(0,wc_names_lst,1, &genWeight, 1.0);
-          wgt = std::vector<float>();
-          //wgt.shrink_to_fit();
-          wcfit = std::vector<WCFit>();
-          //wcfit.shrink_to_fit();
           for(int l=0;l<reg.size();++l){
-            wgt.push_back(weight_lepB * LHEPdfWeight[n]);
-            wcfit.push_back(*eft_fit);
+            wgt[l]=(weight_lepB * LHEPdfWeight[n]);
+            wcfit[l]=*eft_fit;
           }
           FillD4Hists(HistsSysReweightsPDF, ch, reg, 0, n, MVAoutput ,wgt, wcfit);
           delete eft_fit;
@@ -1784,13 +1863,9 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
           if(isnan(PSWeight[n]) || isinf(PSWeight[n])) continue;
           if (iseft) eft_fit = new WCFit(nWCnames, wc_names_lst, nEFTfitCoefficients, EFTfitCoefficients, weight_EFT* PSWeight[n]);
           else eft_fit = new WCFit(0,wc_names_lst,1, &genWeight, 1.0);
-          wgt = std::vector<float>();
-          //wgt.shrink_to_fit();
-          wcfit = std::vector<WCFit>();
-          //wcfit.shrink_to_fit();
           for(int l=0;l<reg.size();++l){
-            wgt.push_back(weight_lepB * PSWeight[n]);
-            wcfit.push_back(*eft_fit);
+            wgt[l]=(weight_lepB * PSWeight[n]);
+            wcfit[l]=*eft_fit;
           }
           FillD4Hists(HistsSysReweightsPS, ch, reg, 0, n, MVAoutput ,wgt, wcfit);
           delete eft_fit;
@@ -1801,16 +1876,21 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       if (iseft) eft_fit = new WCFit(nWCnames, wc_names_lst, nEFTfitCoefficients, EFTfitCoefficients, weight_EFT);
       else eft_fit = new WCFit(0,wc_names_lst,1, &genWeight, 1.0);
       MetPass = (metUnclusMETUp > MetCut) ? true : false;
-      reg = std::vector<int>();
-      //reg.shrink_to_fit();
-      wgt = std::vector<float>();
-      //wgt.shrink_to_fit();
-      wcfit = std::vector<WCFit>();
-      //wcfit.shrink_to_fit();
+      resetVec(reg);
+      if(leptonPass && triggerPass){
+        reg[0]=0;
+        wgt[0]=weight_lep;
+        wcfit[0]=*eft_fit;
+      }
+      if(leptonPass && triggerPass && DyPass && MetPass){
+        reg[1]=1;
+        wgt[1]=weight_lep;
+        wcfit[1]=*eft_fit;
+      }
       if(leptonPass && triggerPass && DyPass && MetPass && nbjet==1){
-        reg.push_back(2);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
+        reg[2]=2;
+        wgt[2]=weight_lepB;
+        wcfit[2]=*eft_fit;
         recoL2 = (*selectedLeptons)[1]->p4_;
         for (int l=0;l<selectedJets->size();l++){
           if((*selectedJets)[l]->btag_){
@@ -1828,9 +1908,9 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         MVAoutput = readerMVA->EvaluateMVA( "BDTG");
       }
       if(leptonPass && triggerPass && MetPass && DyPass && nbjet>1){
-        reg.push_back(3);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
+        reg[3]=3;
+        wgt[3]=weight_lepB;
+        wcfit[3]=*eft_fit;
       }
       for (int n=0;n<sys.size();++n){
         if (sys[n]!="unclusMET") continue;
@@ -1864,16 +1944,21 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       }
 
       MetPass = (metUnclusMETDown > MetCut) ? true : false;
-      reg = std::vector<int>();
-      //reg.shrink_to_fit();
-      wgt = std::vector<float>();
-      //wgt.shrink_to_fit();
-      wcfit = std::vector<WCFit>();
-      //wcfit.shrink_to_fit();
+      resetVec(reg);
+      if(leptonPass && triggerPass){
+        reg[0]=0;
+        wgt[0]=weight_lep;
+        wcfit[0]=*eft_fit;
+      }
+      if(leptonPass && triggerPass && DyPass && MetPass){
+        reg[1]=1;
+        wgt[1]=weight_lep;
+        wcfit[1]=*eft_fit;
+      }
       if(leptonPass && triggerPass && DyPass && MetPass && nbjet==1){
-        reg.push_back(2);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
+        reg[2]=2;
+        wgt[2]=weight_lepB;
+        wcfit[2]=*eft_fit;
         for (int l=0;l<selectedJets->size();l++){
           if((*selectedJets)[l]->btag_){
             recoBjet = (*selectedJets)[l]->p4_;
@@ -1890,9 +1975,9 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         MVAoutput = readerMVA->EvaluateMVA( "BDTG");
       }
       if(leptonPass && triggerPass && MetPass && DyPass && nbjet>1){
-        reg.push_back(3);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
+        reg[3]=3;
+        wgt[3]=weight_lepB;
+        wcfit[3]=*eft_fit;
       }
       for (int n=0;n<sys.size();++n){
         if (sys[n]!="unclusMET") continue;
@@ -1924,18 +2009,23 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
           FillD4Hists(HistsSysDown, ch, reg, vInd(vars,"jet1Phi"), n, (*selectedJets)[0]->phi_ ,wgt, wcfit);
         }
       }
-      MetPass = (myMET > MetCut) ? true : false;
+      MetPass = (myMETpt > MetCut) ? true : false;
 //JES uncertainty
-      reg = std::vector<int>();
-      //reg.shrink_to_fit();
-      wgt = std::vector<float>();
-      //wgt.shrink_to_fit();
-      wcfit = std::vector<WCFit>();
-      //wcfit.shrink_to_fit();
+      resetVec(reg);
+      if(leptonPass && triggerPass){
+        reg[0]=0;
+        wgt[0]=weight_lep;
+        wcfit[0]=*eft_fit;
+      }
+      if(leptonPass && triggerPass && DyPass && MetPass){
+        reg[1]=1;
+        wgt[1]=weight_lep;
+        wcfit[1]=*eft_fit;
+      }
       if(leptonPass && triggerPass && DyPass && MetPass && nbjetJesUp==1){
-        reg.push_back(2);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
+        reg[2]=2;
+        wgt[2]=weight_lepB;
+        wcfit[2]=*eft_fit;
         for (int l=0;l<selectedJetsJesUp->size();l++){
           if((*selectedJetsJesUp)[l]->btag_){
             recoBjet = (*selectedJetsJesUp)[l]->p4_;
@@ -1952,9 +2042,9 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         MVAoutput = readerMVA->EvaluateMVA( "BDTG");
       }
       if(leptonPass && triggerPass && MetPass && DyPass && nbjetJesUp>1){
-        reg.push_back(3);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
+        reg[3]=3;
+        wgt[3]=weight_lepB;
+        wcfit[3]=*eft_fit;
       }
       for (int n=0;n<sys.size();++n){
         if (sys[n]!="jes") continue;
@@ -1986,17 +2076,21 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
           FillD4Hists(HistsSysUp, ch, reg, vInd(vars,"jet1Phi"), n, (*selectedJetsJesUp)[0]->phi_ ,wgt, wcfit);
         }
       }
-
-      reg = std::vector<int>();
-      //reg.shrink_to_fit();
-      wgt = std::vector<float>();
-      //wgt.shrink_to_fit();
-      wcfit = std::vector<WCFit>();
-      //wcfit.shrink_to_fit();
+      resetVec(reg);
+      if(leptonPass && triggerPass){
+        reg[0]=0;
+        wgt[0]=weight_lep;
+        wcfit[0]=*eft_fit;
+      }
+      if(leptonPass && triggerPass && DyPass && MetPass){
+        reg[1]=1;
+        wgt[1]=weight_lep;
+        wcfit[1]=*eft_fit;
+      }
       if(leptonPass && triggerPass && DyPass && MetPass && nbjetJesDown==1){
-        reg.push_back(2);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
+        reg[2]=2;
+        wgt[2]=weight_lepB;
+        wcfit[2]=*eft_fit;
         for (int l=0;l<selectedJetsJesDown->size();l++){
           if((*selectedJetsJesDown)[l]->btag_){
             recoBjet = (*selectedJetsJesDown)[l]->p4_;
@@ -2013,9 +2107,9 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         MVAoutput = readerMVA->EvaluateMVA( "BDTG");
       }
       if(leptonPass && triggerPass && MetPass && DyPass && nbjetJesDown>1){
-        reg.push_back(3);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
+        reg[3]=3;
+        wgt[3]=weight_lepB;
+        wcfit[3]=*eft_fit;
       }
       for (int n=0;n<sys.size();++n){
         if (sys[n]!="jes") continue;
@@ -2048,16 +2142,21 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         }
       }
 //JER uncertainty
-      reg = std::vector<int>();
-      //reg.shrink_to_fit();
-      wgt = std::vector<float>();
-      //wgt.shrink_to_fit();
-      wcfit = std::vector<WCFit>();
-      //wcfit.shrink_to_fit();
+      resetVec(reg);
+      if(leptonPass && triggerPass){
+        reg[0]=0;
+        wgt[0]=weight_lep;
+        wcfit[0]=*eft_fit;
+      }
+      if(leptonPass && triggerPass && DyPass && MetPass){
+        reg[1]=1;
+        wgt[1]=weight_lep;
+        wcfit[1]=*eft_fit;
+      }
       if(leptonPass && triggerPass && DyPass && MetPass && nbjetJerUp==1){
-        reg.push_back(2);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
+        reg[2]=2;
+        wgt[2]=weight_lepB;
+        wcfit[2]=*eft_fit;
         for (int l=0;l<selectedJetsJerUp->size();l++){
           if((*selectedJetsJerUp)[l]->btag_){
             recoBjet = (*selectedJetsJerUp)[l]->p4_;
@@ -2074,9 +2173,9 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         MVAoutput = readerMVA->EvaluateMVA( "BDTG");
       }
       if(leptonPass && triggerPass && MetPass && DyPass && nbjetJerUp>1){
-        reg.push_back(3);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
+        reg[3]=3;
+        wgt[3]=weight_lepB;
+        wcfit[3]=*eft_fit;
       }
       for (int n=0;n<sys.size();++n){
         if (sys[n]!="jer") continue;
@@ -2109,16 +2208,21 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         }
       }
 
-      reg = std::vector<int>();
-      //reg.shrink_to_fit();
-      wgt = std::vector<float>();
-      //wgt.shrink_to_fit();
-      wcfit = std::vector<WCFit>();
-      //wcfit.shrink_to_fit();
+      resetVec(reg);
+      if(leptonPass && triggerPass){
+        reg[0]=0;
+        wgt[0]=weight_lep;
+        wcfit[0]=*eft_fit;
+      }
+      if(leptonPass && triggerPass && DyPass && MetPass){
+        reg[1]=1;
+        wgt[1]=weight_lep;
+        wcfit[1]=*eft_fit;
+      }
       if(leptonPass && triggerPass && DyPass && MetPass && nbjetJerDown==1){
-        reg.push_back(2);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
+        reg[2]=2;
+        wgt[2]=weight_lepB;
+        wcfit[2]=*eft_fit;
         for (int l=0;l<selectedJetsJerDown->size();l++){
           if((*selectedJetsJerDown)[l]->btag_){
             recoBjet = (*selectedJetsJerDown)[l]->p4_;
@@ -2135,9 +2239,9 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         MVAoutput = readerMVA->EvaluateMVA( "BDTG");
       }
       if(leptonPass && triggerPass && MetPass && DyPass && nbjetJerDown>1){
-        reg.push_back(3);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
+        reg[3]=3;
+        wgt[3]=weight_lepB;
+        wcfit[3]=*eft_fit;
       }
       for (int n=0;n<sys.size();++n){
         if (sys[n]!="jer") continue;
@@ -2170,77 +2274,71 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         }
       }
 //JES uncertainty sub sources
-      for (int n=0;n<sysJecNames.size();++n){
-        reg = std::vector<int>();
-        //reg.shrink_to_fit();
-        wgt = std::vector<float>();
-        //wgt.shrink_to_fit();
-        wcfit = std::vector<WCFit>();
-        //wcfit.shrink_to_fit();
-        if(leptonPass && triggerPass && DyPass && MetPass && (*JECsysNbtagUp)[n]==1){
-          reg.push_back(2-2);
-          wgt.push_back(weight_lepB);
-          wcfit.push_back(*eft_fit);
-          for (int l=0;l<(*JECsysUp)[n].size();l++){
-            if((*JECsysUp)[n][l]->btag_){
-              recoBjet = (*JECsysUp)[n][l]->p4_;
-              break;
+      if(leptonPass && triggerPass && DyPass && MetPass){
+        for (int n=0;n<sysJecNames.size();++n){
+          if((*JECsysNbtagUp)[n]==0) continue;
+          resetVec(reg);
+          if(leptonPass && triggerPass && DyPass && MetPass && (*JECsysNbtagUp)[n]==1){
+            reg[0]=0;
+            wgt[0]=weight_lepB;
+            wcfit[0]=*eft_fit;
+            for (int l=0;l<(*JECsysUp)[n].size();l++){
+              if((*JECsysUp)[n][l]->btag_){
+                recoBjet = (*JECsysUp)[n][l]->p4_;
+                break;
+              }
             }
+            recoNu = Wneutrino((*JECsysMETUp)[n], (*JECsysMETPhiUp)[n], (*selectedLeptons)[1]->pt_, (*selectedLeptons)[1]->eta_, (*selectedLeptons)[1]->phi_);
+            recoW = recoNu + recoL2;
+            recoTop = recoW + recoBjet;
+            MVA_topL1Dphi=abs(deltaPhi((*selectedLeptons)[0]->phi_,recoTop.Phi()));
+            MVA_topL1Dr=deltaR((*selectedLeptons)[0]->eta_,(*selectedLeptons)[0]->phi_,recoTop.Eta(),recoTop.Phi());
+            MVA_topL1DptOsumPt=(abs((*selectedLeptons)[0]->pt_ - recoTop.Pt()))/((*selectedLeptons)[0]->pt_ + recoTop.Pt());
+            MVA_topPt=recoTop.Pt();
+            MVAoutput = readerMVA->EvaluateMVA( "BDTG");
           }
-          recoNu = Wneutrino((*JECsysMETUp)[n], (*JECsysMETPhiUp)[n], (*selectedLeptons)[1]->pt_, (*selectedLeptons)[1]->eta_, (*selectedLeptons)[1]->phi_);
-          recoW = recoNu + recoL2;
-          recoTop = recoW + recoBjet;
-          MVA_topL1Dphi=abs(deltaPhi((*selectedLeptons)[0]->phi_,recoTop.Phi()));
-          MVA_topL1Dr=deltaR((*selectedLeptons)[0]->eta_,(*selectedLeptons)[0]->phi_,recoTop.Eta(),recoTop.Phi());
-          MVA_topL1DptOsumPt=(abs((*selectedLeptons)[0]->pt_ - recoTop.Pt()))/((*selectedLeptons)[0]->pt_ + recoTop.Pt());
-          MVA_topPt=recoTop.Pt();
-          MVAoutput = readerMVA->EvaluateMVA( "BDTG");
-        }
-        if(leptonPass && triggerPass && MetPass && DyPass && (*JECsysNbtagUp)[n]>1){
-          reg.push_back(3-2);
-          wgt.push_back(weight_lepB);
-          wcfit.push_back(*eft_fit);
-        }
-        FillD4Hists(HistsJecUp, ch, reg, 0, n, MVAoutput ,wgt, wcfit);
-
-        reg = std::vector<int>();
-        //reg.shrink_to_fit();
-        wgt = std::vector<float>();
-        //wgt.shrink_to_fit();
-        wcfit = std::vector<WCFit>();
-        //wcfit.shrink_to_fit();
-        if(leptonPass && triggerPass && DyPass && MetPass && (*JECsysNbtagDown)[n]==1){
-          reg.push_back(2-2);
-          wgt.push_back(weight_lepB);
-          wcfit.push_back(*eft_fit);
-          for (int l=0;l<(*JECsysDown)[n].size();l++){
-            if((*JECsysDown)[n][l]->btag_){
-              recoBjet = (*JECsysDown)[n][l]->p4_;
-              break;
+          if(leptonPass && triggerPass && MetPass && DyPass && (*JECsysNbtagUp)[n]>1){
+            reg[1]=1;
+            wgt[1]=weight_lepB;
+            wcfit[1]=*eft_fit;
+          }
+          FillD4Hists(HistsJecUp, ch, reg, 0, n, MVAoutput ,wgt, wcfit);
+          }
+        for (int n=0;n<sysJecNames.size();++n){
+          if((*JECsysNbtagDown)[n]==0) continue;
+          resetVec(reg);
+          if(leptonPass && triggerPass && DyPass && MetPass && (*JECsysNbtagDown)[n]==1){
+            reg[0]=0;
+            wgt[0]=weight_lepB;
+            wcfit[0]=*eft_fit;
+            for (int l=0;l<(*JECsysDown)[n].size();l++){
+              if((*JECsysDown)[n][l]->btag_){
+                recoBjet = (*JECsysDown)[n][l]->p4_;
+                break;
+              }
             }
+            recoNu = Wneutrino((*JECsysMETDown)[n], (*JECsysMETPhiDown)[n], (*selectedLeptons)[1]->pt_, (*selectedLeptons)[1]->eta_, (*selectedLeptons)[1]->phi_);
+            recoW = recoNu + recoL2;
+            recoTop = recoW + recoBjet;
+            MVA_topL1Dphi=abs(deltaPhi((*selectedLeptons)[0]->phi_,recoTop.Phi()));
+            MVA_topL1Dr=deltaR((*selectedLeptons)[0]->eta_,(*selectedLeptons)[0]->phi_,recoTop.Eta(),recoTop.Phi());
+            MVA_topL1DptOsumPt=(abs((*selectedLeptons)[0]->pt_ - recoTop.Pt()))/((*selectedLeptons)[0]->pt_ + recoTop.Pt());
+            MVA_topPt=recoTop.Pt();
+            MVAoutput = readerMVA->EvaluateMVA( "BDTG");
           }
-          recoNu = Wneutrino((*JECsysMETDown)[n], (*JECsysMETPhiDown)[n], (*selectedLeptons)[1]->pt_, (*selectedLeptons)[1]->eta_, (*selectedLeptons)[1]->phi_);
-          recoW = recoNu + recoL2;
-          recoTop = recoW + recoBjet;
-          MVA_topL1Dphi=abs(deltaPhi((*selectedLeptons)[0]->phi_,recoTop.Phi()));
-          MVA_topL1Dr=deltaR((*selectedLeptons)[0]->eta_,(*selectedLeptons)[0]->phi_,recoTop.Eta(),recoTop.Phi());
-          MVA_topL1DptOsumPt=(abs((*selectedLeptons)[0]->pt_ - recoTop.Pt()))/((*selectedLeptons)[0]->pt_ + recoTop.Pt());
-          MVA_topPt=recoTop.Pt();
-          MVAoutput = readerMVA->EvaluateMVA( "BDTG");
+          if(leptonPass && triggerPass && MetPass && DyPass && (*JECsysNbtagDown)[n]>1){
+            reg[1]=1;
+            wgt[1]=weight_lepB;
+            wcfit[1]=*eft_fit;
+          }
+          FillD4Hists(HistsJecDown, ch, reg, 0, n, MVAoutput ,wgt, wcfit);
         }
-        if(leptonPass && triggerPass && MetPass && DyPass && (*JECsysNbtagDown)[n]>1){
-          reg.push_back(3-2);
-          wgt.push_back(weight_lepB);
-          wcfit.push_back(*eft_fit);
-        }
-        FillD4Hists(HistsJecDown, ch, reg, 0, n, MVAoutput ,wgt, wcfit);
-      }
-    delete eft_fit;
+      delete eft_fit;
     }
-
+  }
 // Lepton scale resolution uncertainties
 //Muon scale
-    if(selectedLeptonsMuScaleUp->size() ==2 && nbjet>0){
+    if(selectedLeptonsMuScaleUp->size() ==2){
       leptonPass=false;
       triggerPass=false;
       DyPass = false;
@@ -2254,25 +2352,31 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       if (ch ==1 && triggerPassEMu) triggerPass=true;
       if (ch ==2 && triggerPassMuMu) triggerPass=true;
       if (((*selectedLeptonsMuScaleUp)[0]->p4_ + (*selectedLeptonsMuScaleUp)[1]->p4_).M()>106 ) DyPass = true;
-      if (myMET > MetCut) MetPass = true;
+      if (myMETpt > MetCut) MetPass = true;
       if (ch==0)  sf_Trigger = scale_factor(&sf_triggeree_H, (*selectedLeptonsMuScaleUp)[0]->pt_, (*selectedLeptonsMuScaleUp)[1]->pt_,"central",false, true);
       if (ch==1) sf_Trigger = scale_factor(&sf_triggeremu_H, (*selectedLeptonsMuScaleUp)[0]->pt_, (*selectedLeptonsMuScaleUp)[1]->pt_,"central",false, true);
-      if (data == "mc" && ch==2) sf_Trigger = scale_factor(&sf_triggermumu_H, (*selectedLeptonsMuScaleUp)[0]->pt_, (*selectedLeptonsMuScaleUp)[1]->pt_,"central",false, true);
+      if (ch==2) sf_Trigger = scale_factor(&sf_triggermumu_H, (*selectedLeptonsMuScaleUp)[0]->pt_, (*selectedLeptonsMuScaleUp)[1]->pt_,"central",false, true);
+      if (ch==2 &&  (*selectedLeptonsMuScaleUp)[0]->pt_>60 && (*selectedLeptonsMuScaleUp)[1]->pt_>60) sf_Trigger = (1-((1-effTdata1)*(1-effTdata2)))/(1-((1-effTmc1)*(1-effTmc2)));
+      weight_lep = weight_Lumi * weightSign * sf_Ele_Reco * sf_Ele_ID * sf_Mu_ID * sf_Mu_ISO* sf_Trigger * weight_PU * weight_prefiring * weight_topPtPowheg * ttKFactor * sf_JetPuId;
       weight_lepB = weight_Lumi * weightSign * sf_Ele_Reco * sf_Ele_ID * sf_Mu_ID * sf_Mu_ISO* (P_bjet_data/P_bjet_mc) * sf_Trigger * weight_PU * weight_prefiring * weight_topPtPowheg * ttKFactor * sf_JetPuId;
       weight_EFT = lumi * (1000.0/nRuns)  * sf_Ele_Reco * sf_Ele_ID * sf_Mu_ID * sf_Mu_ISO* (P_bjet_data/P_bjet_mc) * sf_Trigger * weight_PU * weight_prefiring * weight_topPtPowheg * ttKFactor * sf_JetPuId;
       if (iseft) eft_fit = new WCFit(nWCnames, wc_names_lst, nEFTfitCoefficients, EFTfitCoefficients, weight_EFT);
       else eft_fit = new WCFit(0,wc_names_lst,1, &genWeight, 1.0);
-      reg = std::vector<int>();
-      //reg.shrink_to_fit();
-      wgt = std::vector<float>();
-      //wgt.shrink_to_fit();
-      wcfit = std::vector<WCFit>();
-      //wcfit.shrink_to_fit();
+      resetVec(reg);
+      if(leptonPass && triggerPass){
+        reg[0]=0;
+        wgt[0]=weight_lep;
+        wcfit[0]=*eft_fit;
+      }
+      if(leptonPass && triggerPass && DyPass && MetPass){
+        reg[1]=1;
+        wgt[1]=weight_lep;
+        wcfit[1]=*eft_fit;
+      }
       if(leptonPass && triggerPass && DyPass && MetPass && nbjet==1){
-        reg.push_back(2);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
-        recoL2 = (*selectedLeptonsMuScaleUp)[1]->p4_;
+        reg[2]=2;
+        wgt[2]=weight_lepB;
+        wcfit[2]=*eft_fit;
         for (int l=0;l<selectedJets->size();l++){
           if((*selectedJets)[l]->btag_){
             recoBjet = (*selectedJets)[l]->p4_;
@@ -2280,7 +2384,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
           }
         }
         recoL2 = (*selectedLeptonsMuScaleUp)[1]->p4_;
-        recoNu = Wneutrino(myMET, MET_T1_phi, (*selectedLeptonsMuScaleUp)[1]->pt_, (*selectedLeptonsMuScaleUp)[1]->eta_, (*selectedLeptonsMuScaleUp)[1]->phi_);
+        recoNu = Wneutrino(myMETpt, myMETphi, (*selectedLeptonsMuScaleUp)[1]->pt_, (*selectedLeptonsMuScaleUp)[1]->eta_, (*selectedLeptonsMuScaleUp)[1]->phi_);
         recoW = recoNu + recoL2;
         recoTop = recoW + recoBjet;
         MVA_lep1Pt=(*selectedLeptonsMuScaleUp)[0]->pt_;
@@ -2296,9 +2400,9 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         MVAoutput = readerMVA->EvaluateMVA( "BDTG");
       }
       if(leptonPass && triggerPass && MetPass && DyPass && nbjet>1){
-        reg.push_back(3);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
+        reg[3]=3;
+        wgt[3]=weight_lepB;
+        wcfit[3]=*eft_fit;
       }
       for (int n=0;n<sys.size();++n){
         if (sys[n]!="muonScale") continue;
@@ -2332,7 +2436,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       }
     }
 
-    if(selectedLeptonsMuScaleDown->size() ==2 && nbjet>0){
+    if(selectedLeptonsMuScaleDown->size() ==2){
       leptonPass=false;
       triggerPass=false;
       DyPass = false;
@@ -2346,25 +2450,31 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       if (ch ==1 && triggerPassEMu) triggerPass=true;
       if (ch ==2 && triggerPassMuMu) triggerPass=true;
       if (((*selectedLeptonsMuScaleDown)[0]->p4_ + (*selectedLeptonsMuScaleDown)[1]->p4_).M()>106 ) DyPass = true;
-      if (myMET > MetCut) MetPass = true;
+      if (myMETpt > MetCut) MetPass = true;
       if (ch==0)  sf_Trigger = scale_factor(&sf_triggeree_H, (*selectedLeptonsMuScaleDown)[0]->pt_, (*selectedLeptonsMuScaleDown)[1]->pt_,"central",false, true);
       if (ch==1) sf_Trigger = scale_factor(&sf_triggeremu_H, (*selectedLeptonsMuScaleDown)[0]->pt_, (*selectedLeptonsMuScaleDown)[1]->pt_,"central",false, true);
-      if (data == "mc" && ch==2) sf_Trigger = scale_factor(&sf_triggermumu_H, (*selectedLeptonsMuScaleDown)[0]->pt_, (*selectedLeptonsMuScaleDown)[1]->pt_,"central",false, true);
+      if (ch==2) sf_Trigger = scale_factor(&sf_triggermumu_H, (*selectedLeptonsMuScaleDown)[0]->pt_, (*selectedLeptonsMuScaleDown)[1]->pt_,"central",false, true);
+      if (ch==2 && (*selectedLeptonsMuScaleDown)[0]->pt_>60 && (*selectedLeptonsMuScaleDown)[1]->pt_>60) sf_Trigger = (1-((1-effTdata1)*(1-effTdata2)))/(1-((1-effTmc1)*(1-effTmc2)));
+      weight_lep = weight_Lumi * weightSign * sf_Ele_Reco * sf_Ele_ID * sf_Mu_ID * sf_Mu_ISO* sf_Trigger * weight_PU * weight_prefiring * weight_topPtPowheg * ttKFactor * sf_JetPuId;
       weight_lepB = weight_Lumi * weightSign * sf_Ele_Reco * sf_Ele_ID * sf_Mu_ID * sf_Mu_ISO* (P_bjet_data/P_bjet_mc) * sf_Trigger * weight_PU * weight_prefiring * weight_topPtPowheg * ttKFactor * sf_JetPuId;
       weight_EFT = lumi * (1000.0/nRuns)  * sf_Ele_Reco * sf_Ele_ID * sf_Mu_ID * sf_Mu_ISO* (P_bjet_data/P_bjet_mc) * sf_Trigger * weight_PU * weight_prefiring * weight_topPtPowheg * ttKFactor * sf_JetPuId;
       if (iseft) eft_fit = new WCFit(nWCnames, wc_names_lst, nEFTfitCoefficients, EFTfitCoefficients, weight_EFT);
       else eft_fit = new WCFit(0,wc_names_lst,1, &genWeight, 1.0);
-      reg = std::vector<int>();
-      //reg.shrink_to_fit();
-      wgt = std::vector<float>();
-      //wgt.shrink_to_fit();
-      wcfit = std::vector<WCFit>();
-      //wcfit.shrink_to_fit();
+      resetVec(reg);
+      if(leptonPass && triggerPass){
+        reg[0]=0;
+        wgt[0]=weight_lep;
+        wcfit[0]=*eft_fit;
+      }
+      if(leptonPass && triggerPass && DyPass && MetPass){
+        reg[1]=1;
+        wgt[1]=weight_lep;
+        wcfit[1]=*eft_fit;
+      }
       if(leptonPass && triggerPass && DyPass && MetPass && nbjet==1){
-        reg.push_back(2);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
-        recoL2 = (*selectedLeptonsMuScaleDown)[1]->p4_;
+        reg[2]=2;
+        wgt[2]=weight_lepB;
+        wcfit[2]=*eft_fit;
         for (int l=0;l<selectedJets->size();l++){
           if((*selectedJets)[l]->btag_){
             recoBjet = (*selectedJets)[l]->p4_;
@@ -2372,7 +2482,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
           }
         }
         recoL2 = (*selectedLeptonsMuScaleDown)[1]->p4_;
-        recoNu = Wneutrino(myMET, MET_T1_phi, (*selectedLeptonsMuScaleDown)[1]->pt_, (*selectedLeptonsMuScaleDown)[1]->eta_, (*selectedLeptonsMuScaleDown)[1]->phi_);
+        recoNu = Wneutrino(myMETpt, myMETphi, (*selectedLeptonsMuScaleDown)[1]->pt_, (*selectedLeptonsMuScaleDown)[1]->eta_, (*selectedLeptonsMuScaleDown)[1]->phi_);
         recoW = recoNu + recoL2;
         recoTop = recoW + recoBjet;
         MVA_lep1Pt=(*selectedLeptonsMuScaleDown)[0]->pt_;
@@ -2388,9 +2498,9 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         MVAoutput = readerMVA->EvaluateMVA( "BDTG");
       }
       if(leptonPass && triggerPass && MetPass && DyPass && nbjet>1){
-        reg.push_back(3);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
+        reg[3]=3;
+        wgt[3]=weight_lepB;
+        wcfit[3]=*eft_fit;
       }
       for (int n=0;n<sys.size();++n){
         if (sys[n]!="muonScale") continue;
@@ -2425,7 +2535,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       delete eft_fit;
     }
 
-    if(selectedLeptonsEleScaleUp->size() ==2 && nbjet>0){
+    if(selectedLeptonsEleScaleUp->size() ==2){
       leptonPass=false;
       triggerPass=false;
       DyPass = false;
@@ -2439,25 +2549,31 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       if (ch ==1 && triggerPassEMu) triggerPass=true;
       if (ch ==2 && triggerPassMuMu) triggerPass=true;
       if (((*selectedLeptonsEleScaleUp)[0]->p4_ + (*selectedLeptonsEleScaleUp)[1]->p4_).M()>106 ) DyPass = true;
-      if (myMET > MetCut) MetPass = true;
+      if (myMETpt > MetCut) MetPass = true;
       if (ch==0)  sf_Trigger = scale_factor(&sf_triggeree_H, (*selectedLeptonsEleScaleUp)[0]->pt_, (*selectedLeptonsEleScaleUp)[1]->pt_,"central",false, true);
       if (ch==1) sf_Trigger = scale_factor(&sf_triggeremu_H, (*selectedLeptonsEleScaleUp)[0]->pt_, (*selectedLeptonsEleScaleUp)[1]->pt_,"central",false, true);
-      if (data == "mc" && ch==2) sf_Trigger = scale_factor(&sf_triggermumu_H, (*selectedLeptonsEleScaleUp)[0]->pt_, (*selectedLeptonsEleScaleUp)[1]->pt_,"central",false, true);
+      if (ch==2) sf_Trigger = scale_factor(&sf_triggermumu_H, (*selectedLeptonsEleScaleUp)[0]->pt_, (*selectedLeptonsEleScaleUp)[1]->pt_,"central",false, true);
+      if (ch==2 && (*selectedLeptonsEleScaleUp)[0]->pt_ > 60 && (*selectedLeptonsEleScaleUp)[1]->pt_>60) sf_Trigger = (1-((1-effTdata1)*(1-effTdata2)))/(1-((1-effTmc1)*(1-effTmc2)));
+      weight_lep = weight_Lumi * weightSign * sf_Ele_Reco * sf_Ele_ID * sf_Mu_ID * sf_Mu_ISO* sf_Trigger * weight_PU * weight_prefiring * weight_topPtPowheg * ttKFactor * sf_JetPuId;
       weight_lepB = weight_Lumi * weightSign * sf_Ele_Reco * sf_Ele_ID * sf_Mu_ID * sf_Mu_ISO* (P_bjet_data/P_bjet_mc) * sf_Trigger * weight_PU * weight_prefiring * weight_topPtPowheg * ttKFactor * sf_JetPuId;
       weight_EFT = lumi * (1000.0/nRuns)  * sf_Ele_Reco * sf_Ele_ID * sf_Mu_ID * sf_Mu_ISO* (P_bjet_data/P_bjet_mc) * sf_Trigger * weight_PU * weight_prefiring * weight_topPtPowheg * ttKFactor * sf_JetPuId;
       if (iseft) eft_fit = new WCFit(nWCnames, wc_names_lst, nEFTfitCoefficients, EFTfitCoefficients, weight_EFT);
       else eft_fit = new WCFit(0,wc_names_lst,1, &genWeight, 1.0);
-      reg = std::vector<int>();
-      //reg.shrink_to_fit();
-      wgt = std::vector<float>();
-      //wgt.shrink_to_fit();
-      wcfit = std::vector<WCFit>();
-      //wcfit.shrink_to_fit();
+      resetVec(reg);
+      if(leptonPass && triggerPass){
+        reg[0]=0;
+        wgt[0]=weight_lep;
+        wcfit[0]=*eft_fit;
+      }
+      if(leptonPass && triggerPass && DyPass && MetPass){
+        reg[1]=1;
+        wgt[1]=weight_lep;
+        wcfit[1]=*eft_fit;
+      }
       if(leptonPass && triggerPass && DyPass && MetPass && nbjet==1){
-        reg.push_back(2);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
-        recoL2 = (*selectedLeptonsEleScaleUp)[1]->p4_;
+        reg[2]=2;
+        wgt[2]=weight_lepB;
+        wcfit[2]=*eft_fit;
         for (int l=0;l<selectedJets->size();l++){
           if((*selectedJets)[l]->btag_){
             recoBjet = (*selectedJets)[l]->p4_;
@@ -2465,7 +2581,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
           }
         }
         recoL2 = (*selectedLeptonsEleScaleUp)[1]->p4_;
-        recoNu = Wneutrino(myMET, MET_T1_phi, (*selectedLeptonsEleScaleUp)[1]->pt_, (*selectedLeptonsEleScaleUp)[1]->eta_, (*selectedLeptonsEleScaleUp)[1]->phi_);
+        recoNu = Wneutrino(myMETpt, myMETphi, (*selectedLeptonsEleScaleUp)[1]->pt_, (*selectedLeptonsEleScaleUp)[1]->eta_, (*selectedLeptonsEleScaleUp)[1]->phi_);
         recoW = recoNu + recoL2;
         recoTop = recoW + recoBjet;
         MVA_lep1Pt=(*selectedLeptonsEleScaleUp)[0]->pt_;
@@ -2481,9 +2597,9 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         MVAoutput = readerMVA->EvaluateMVA( "BDTG");
       }
       if(leptonPass && triggerPass && MetPass && DyPass && nbjet>1){
-        reg.push_back(3);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
+        reg[3]=3;
+        wgt[3]=weight_lepB;
+        wcfit[3]=*eft_fit;
       }
       for (int n=0;n<sys.size();++n){
         if (sys[n]!="electronScale") continue;
@@ -2517,7 +2633,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       }
     }
 
-    if(selectedLeptonsEleScaleDown->size() ==2 && nbjet>0){
+    if(selectedLeptonsEleScaleDown->size() ==2){
       leptonPass=false;
       triggerPass=false;
       DyPass = false;
@@ -2531,25 +2647,31 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       if (ch ==1 && triggerPassEMu) triggerPass=true;
       if (ch ==2 && triggerPassMuMu) triggerPass=true;
       if (((*selectedLeptonsEleScaleDown)[0]->p4_ + (*selectedLeptonsEleScaleDown)[1]->p4_).M()>106 ) DyPass = true;
-      if (myMET > MetCut) MetPass = true;
+      if (myMETpt > MetCut) MetPass = true;
       if (ch==0)  sf_Trigger = scale_factor(&sf_triggeree_H, (*selectedLeptonsEleScaleDown)[0]->pt_, (*selectedLeptonsEleScaleDown)[1]->pt_,"central",false, true);
       if (ch==1) sf_Trigger = scale_factor(&sf_triggeremu_H, (*selectedLeptonsEleScaleDown)[0]->pt_, (*selectedLeptonsEleScaleDown)[1]->pt_,"central",false, true);
-      if (data == "mc" && ch==2) sf_Trigger = scale_factor(&sf_triggermumu_H, (*selectedLeptonsEleScaleDown)[0]->pt_, (*selectedLeptonsEleScaleDown)[1]->pt_,"central",false, true);
+      if (ch==2) sf_Trigger = scale_factor(&sf_triggermumu_H, (*selectedLeptonsEleScaleDown)[0]->pt_, (*selectedLeptonsEleScaleDown)[1]->pt_,"central",false, true);
+      if (ch==2 && (*selectedLeptonsEleScaleDown)[0]->pt_>60 && (*selectedLeptonsEleScaleDown)[1]->pt_>60) sf_Trigger = (1-((1-effTdata1)*(1-effTdata2)))/(1-((1-effTmc1)*(1-effTmc2)));
+      weight_lep = weight_Lumi * weightSign * sf_Ele_Reco * sf_Ele_ID * sf_Mu_ID * sf_Mu_ISO* sf_Trigger * weight_PU * weight_prefiring * weight_topPtPowheg * ttKFactor * sf_JetPuId;
       weight_lepB = weight_Lumi * weightSign * sf_Ele_Reco * sf_Ele_ID * sf_Mu_ID * sf_Mu_ISO* (P_bjet_data/P_bjet_mc) * sf_Trigger * weight_PU * weight_prefiring * weight_topPtPowheg * ttKFactor * sf_JetPuId;
       weight_EFT = lumi * (1000.0/nRuns)  * sf_Ele_Reco * sf_Ele_ID * sf_Mu_ID * sf_Mu_ISO* (P_bjet_data/P_bjet_mc) * sf_Trigger * weight_PU * weight_prefiring * weight_topPtPowheg * ttKFactor * sf_JetPuId;
       if (iseft) eft_fit = new WCFit(nWCnames, wc_names_lst, nEFTfitCoefficients, EFTfitCoefficients, weight_EFT);
       else eft_fit = new WCFit(0,wc_names_lst,1, &genWeight, 1.0);
-      reg = std::vector<int>();
-      //reg.shrink_to_fit();
-      wgt = std::vector<float>();
-      //wgt.shrink_to_fit();
-      wcfit = std::vector<WCFit>();
-      //wcfit.shrink_to_fit();
+      resetVec(reg);
+      if(leptonPass && triggerPass){
+        reg[0]=0;
+        wgt[0]=weight_lep;
+        wcfit[0]=*eft_fit;
+      }
+      if(leptonPass && triggerPass && DyPass && MetPass){
+        reg[1]=1;
+        wgt[1]=weight_lep;
+        wcfit[1]=*eft_fit;
+      }
       if(leptonPass && triggerPass && DyPass && MetPass && nbjet==1){
-        reg.push_back(2);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
-        recoL2 = (*selectedLeptonsEleScaleDown)[1]->p4_;
+        reg[2]=2;
+        wgt[2]=weight_lepB;
+        wcfit[2]=*eft_fit;
         for (int l=0;l<selectedJets->size();l++){
           if((*selectedJets)[l]->btag_){
             recoBjet = (*selectedJets)[l]->p4_;
@@ -2557,7 +2679,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
           }
         }
         recoL2 = (*selectedLeptonsEleScaleDown)[1]->p4_;
-        recoNu = Wneutrino(myMET, MET_T1_phi, (*selectedLeptonsEleScaleDown)[1]->pt_, (*selectedLeptonsEleScaleDown)[1]->eta_, (*selectedLeptonsEleScaleDown)[1]->phi_);
+        recoNu = Wneutrino(myMETpt, myMETphi, (*selectedLeptonsEleScaleDown)[1]->pt_, (*selectedLeptonsEleScaleDown)[1]->eta_, (*selectedLeptonsEleScaleDown)[1]->phi_);
         recoW = recoNu + recoL2;
         recoTop = recoW + recoBjet;
         MVA_lep1Pt=(*selectedLeptonsEleScaleDown)[0]->pt_;
@@ -2573,9 +2695,9 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         MVAoutput = readerMVA->EvaluateMVA( "BDTG");
       }
       if(leptonPass && triggerPass && MetPass && DyPass && nbjet>1){
-        reg.push_back(3);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
+        reg[3]=3;
+        wgt[3]=weight_lepB;
+        wcfit[3]=*eft_fit;
       }
       for (int n=0;n<sys.size();++n){
         if (sys[n]!="electronScale") continue;
@@ -2611,7 +2733,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
     }
 
 
-    if(selectedLeptonsMuResUp->size() ==2 && nbjet>0){
+    if(selectedLeptonsMuResUp->size() ==2){
       leptonPass=false;
       triggerPass=false;
       DyPass = false;
@@ -2625,25 +2747,31 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       if (ch ==1 && triggerPassEMu) triggerPass=true;
       if (ch ==2 && triggerPassMuMu) triggerPass=true;
       if (((*selectedLeptonsMuResUp)[0]->p4_ + (*selectedLeptonsMuResUp)[1]->p4_).M()>106 ) DyPass = true;
-      if (myMET > MetCut) MetPass = true;
+      if (myMETpt > MetCut) MetPass = true;
       if (ch==0)  sf_Trigger = scale_factor(&sf_triggeree_H, (*selectedLeptonsMuResUp)[0]->pt_, (*selectedLeptonsMuResUp)[1]->pt_,"central",false, true);
       if (ch==1) sf_Trigger = scale_factor(&sf_triggeremu_H, (*selectedLeptonsMuResUp)[0]->pt_, (*selectedLeptonsMuResUp)[1]->pt_,"central",false, true);
-      if (data == "mc" && ch==2) sf_Trigger = scale_factor(&sf_triggermumu_H, (*selectedLeptonsMuResUp)[0]->pt_, (*selectedLeptonsMuResUp)[1]->pt_,"central",false, true);
+      if (ch==2) sf_Trigger = scale_factor(&sf_triggermumu_H, (*selectedLeptonsMuResUp)[0]->pt_, (*selectedLeptonsMuResUp)[1]->pt_,"central",false, true);
+      if (ch==2 && (*selectedLeptonsMuResUp)[0]->pt_>60 && (*selectedLeptonsMuResUp)[1]->pt_>60) sf_Trigger = (1-((1-effTdata1)*(1-effTdata2)))/(1-((1-effTmc1)*(1-effTmc2)));
+      weight_lep = weight_Lumi * weightSign * sf_Ele_Reco * sf_Ele_ID * sf_Mu_ID * sf_Mu_ISO* sf_Trigger * weight_PU * weight_prefiring * weight_topPtPowheg * ttKFactor * sf_JetPuId;
       weight_lepB = weight_Lumi * weightSign * sf_Ele_Reco * sf_Ele_ID * sf_Mu_ID * sf_Mu_ISO* (P_bjet_data/P_bjet_mc) * sf_Trigger * weight_PU * weight_prefiring * weight_topPtPowheg * ttKFactor * sf_JetPuId;
       weight_EFT = lumi * (1000.0/nRuns)  * sf_Ele_Reco * sf_Ele_ID * sf_Mu_ID * sf_Mu_ISO* (P_bjet_data/P_bjet_mc) * sf_Trigger * weight_PU * weight_prefiring * weight_topPtPowheg * ttKFactor * sf_JetPuId;
       if (iseft) eft_fit = new WCFit(nWCnames, wc_names_lst, nEFTfitCoefficients, EFTfitCoefficients, weight_EFT);
       else eft_fit = new WCFit(0,wc_names_lst,1, &genWeight, 1.0);
-      reg = std::vector<int>();
-      //reg.shrink_to_fit();
-      wgt = std::vector<float>();
-      //wgt.shrink_to_fit();
-      wcfit = std::vector<WCFit>();
-      //wcfit.shrink_to_fit();
+      resetVec(reg);
+      if(leptonPass && triggerPass){
+        reg[0]=0;
+        wgt[0]=weight_lep;
+        wcfit[0]=*eft_fit;
+      }
+      if(leptonPass && triggerPass && DyPass && MetPass){
+        reg[1]=1;
+        wgt[1]=weight_lep;
+        wcfit[1]=*eft_fit;
+      }
       if(leptonPass && triggerPass && DyPass && MetPass && nbjet==1){
-        reg.push_back(2);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
-        recoL2 = (*selectedLeptonsMuResUp)[1]->p4_;
+        reg[2]=2;
+        wgt[2]=weight_lepB;
+        wcfit[2]=*eft_fit;
         for (int l=0;l<selectedJets->size();l++){
           if((*selectedJets)[l]->btag_){
             recoBjet = (*selectedJets)[l]->p4_;
@@ -2651,7 +2779,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
           }
         }
         recoL2 = (*selectedLeptonsMuResUp)[1]->p4_;
-        recoNu = Wneutrino(myMET, MET_T1_phi, (*selectedLeptonsMuResUp)[1]->pt_, (*selectedLeptonsMuResUp)[1]->eta_, (*selectedLeptonsMuResUp)[1]->phi_);
+        recoNu = Wneutrino(myMETpt, myMETphi, (*selectedLeptonsMuResUp)[1]->pt_, (*selectedLeptonsMuResUp)[1]->eta_, (*selectedLeptonsMuResUp)[1]->phi_);
         recoW = recoNu + recoL2;
         recoTop = recoW + recoBjet;
         MVA_lep1Pt=(*selectedLeptonsMuResUp)[0]->pt_;
@@ -2667,9 +2795,9 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         MVAoutput = readerMVA->EvaluateMVA( "BDTG");
       }
       if(leptonPass && triggerPass && MetPass && DyPass && nbjet>1){
-        reg.push_back(3);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
+        reg[3]=3;
+        wgt[3]=weight_lepB;
+        wcfit[3]=*eft_fit;
       }
       for (int n=0;n<sys.size();++n){
         if (sys[n]!="muonRes") continue;
@@ -2703,7 +2831,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       }
     }
 
-    if(selectedLeptonsMuResDown->size() ==2 && nbjet>0){
+    if(selectedLeptonsMuResDown->size() ==2){
       leptonPass=false;
       triggerPass=false;
       DyPass = false;
@@ -2717,25 +2845,31 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
       if (ch ==1 && triggerPassEMu) triggerPass=true;
       if (ch ==2 && triggerPassMuMu) triggerPass=true;
       if (((*selectedLeptonsMuResDown)[0]->p4_ + (*selectedLeptonsMuResDown)[1]->p4_).M()>106 ) DyPass = true;
-      if (myMET > MetCut) MetPass = true;
+      if (myMETpt > MetCut) MetPass = true;
       if (ch==0)  sf_Trigger = scale_factor(&sf_triggeree_H, (*selectedLeptonsMuResDown)[0]->pt_, (*selectedLeptonsMuResDown)[1]->pt_,"central",false, true);
       if (ch==1) sf_Trigger = scale_factor(&sf_triggeremu_H, (*selectedLeptonsMuResDown)[0]->pt_, (*selectedLeptonsMuResDown)[1]->pt_,"central",false, true);
-      if (data == "mc" && ch==2) sf_Trigger = scale_factor(&sf_triggermumu_H, (*selectedLeptonsMuResDown)[0]->pt_, (*selectedLeptonsMuResDown)[1]->pt_,"central",false, true);
+      if (ch==2) sf_Trigger = scale_factor(&sf_triggermumu_H, (*selectedLeptonsMuResDown)[0]->pt_, (*selectedLeptonsMuResDown)[1]->pt_,"central",false, true);;
+      if (ch==2 && (*selectedLeptonsMuResDown)[0]->pt_>60 && (*selectedLeptonsMuResDown)[1]->pt_>60) sf_Trigger = (1-((1-effTdata1)*(1-effTdata2)))/(1-((1-effTmc1)*(1-effTmc2)));
+      weight_lepB = weight_Lumi * weightSign * sf_Ele_Reco * sf_Ele_ID * sf_Mu_ID * sf_Mu_ISO* sf_Trigger * weight_PU * weight_prefiring * weight_topPtPowheg * ttKFactor * sf_JetPuId;
       weight_lepB = weight_Lumi * weightSign * sf_Ele_Reco * sf_Ele_ID * sf_Mu_ID * sf_Mu_ISO* (P_bjet_data/P_bjet_mc) * sf_Trigger * weight_PU * weight_prefiring * weight_topPtPowheg * ttKFactor * sf_JetPuId;
       weight_EFT = lumi * (1000.0/nRuns)  * sf_Ele_Reco * sf_Ele_ID * sf_Mu_ID * sf_Mu_ISO* (P_bjet_data/P_bjet_mc) * sf_Trigger * weight_PU * weight_prefiring * weight_topPtPowheg * ttKFactor * sf_JetPuId;
       if (iseft) eft_fit = new WCFit(nWCnames, wc_names_lst, nEFTfitCoefficients, EFTfitCoefficients, weight_EFT);
       else eft_fit = new WCFit(0,wc_names_lst,1, &genWeight, 1.0);
-      reg = std::vector<int>();
-      //reg.shrink_to_fit();
-      wgt = std::vector<float>();
-      //wgt.shrink_to_fit();
-      wcfit = std::vector<WCFit>();
-      //wcfit.shrink_to_fit();
+      resetVec(reg);
+      if(leptonPass && triggerPass){
+        reg[0]=0;
+        wgt[0]=weight_lep;
+        wcfit[0]=*eft_fit;
+      }
+      if(leptonPass && triggerPass && DyPass && MetPass){
+        reg[1]=1;
+        wgt[1]=weight_lep;
+        wcfit[1]=*eft_fit;
+      }
       if(leptonPass && triggerPass && DyPass && MetPass && nbjet==1){
-        reg.push_back(2);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
-        recoL2 = (*selectedLeptonsMuResDown)[1]->p4_;
+        reg[2]=2;
+        wgt[2]=weight_lepB;
+        wcfit[2]=*eft_fit;
         for (int l=0;l<selectedJets->size();l++){
           if((*selectedJets)[l]->btag_){
             recoBjet = (*selectedJets)[l]->p4_;
@@ -2743,7 +2877,7 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
           }
         }
         recoL2 = (*selectedLeptonsMuResDown)[1]->p4_;
-        recoNu = Wneutrino(myMET, MET_T1_phi, (*selectedLeptonsMuResDown)[1]->pt_, (*selectedLeptonsMuResDown)[1]->eta_, (*selectedLeptonsMuResDown)[1]->phi_);
+        recoNu = Wneutrino(myMETpt, myMETphi, (*selectedLeptonsMuResDown)[1]->pt_, (*selectedLeptonsMuResDown)[1]->eta_, (*selectedLeptonsMuResDown)[1]->phi_);
         recoW = recoNu + recoL2;
         recoTop = recoW + recoBjet;
         MVA_lep1Pt=(*selectedLeptonsMuResDown)[0]->pt_;
@@ -2759,9 +2893,9 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         MVAoutput = readerMVA->EvaluateMVA( "BDTG");
       }
       if(leptonPass && triggerPass && MetPass && DyPass && nbjet>1){
-        reg.push_back(3);
-        wgt.push_back(weight_lepB);
-        wcfit.push_back(*eft_fit);
+        reg[3]=3;
+        wgt[3]=weight_lepB;
+        wcfit[3]=*eft_fit;
       }
       for (int n=0;n<sys.size();++n){
         if (sys[n]!="muonRes") continue;
@@ -2794,8 +2928,8 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
         }
       }
       delete eft_fit;
-    }
 
+    }
 /*
       sumPuWeight+=weight_PU;
       sumPreFireWeight+=weight_prefiring;
@@ -2920,31 +3054,42 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
   }
   cout<<"Loop is completed"<<endl;
   cout<<"from "<<ntr<<" events, "<<nAccept<<" events are accepted"<<endl;
-  cout<<"sumPuWeight "<<sumPuWeight<<endl;
-  cout<<"sumPreFireWeight "<<sumPreFireWeight<<endl;
-  cout<<"sumWeightMuID "<<sumWeightMuID<<endl;
-  cout<<"sumWeightMuIso "<<sumWeightMuIso<<endl;
-  cout<<"sumWeighttTrigger "<<sumWeighttTrigger<<endl;
-  cout<<"sumWeightEleReco "<<sumWeightEleReco<<endl;
-  cout<<"sumWeightEleID "<<sumWeightEleID<<endl;  
-  cout<<"sumWeightBtag "<<sumWeightBtag<<endl;
+  cout<<"Total Virtual Memory just after the loop: "<<(getValue()-memoryInit)/1000.0<<" MB"<<endl;
+//  cout<<"sumPuWeight "<<sumPuWeight<<endl;
+//  cout<<"sumPreFireWeight "<<sumPreFireWeight<<endl;
+//  cout<<"sumWeightMuID "<<sumWeightMuID<<endl;
+//  cout<<"sumWeightMuIso "<<sumWeightMuIso<<endl;
+//  cout<<"sumWeighttTrigger "<<sumWeighttTrigger<<endl;
+//  cout<<"sumWeightEleReco "<<sumWeightEleReco<<endl;
+//  cout<<"sumWeightEleID "<<sumWeightEleID<<endl;  
+//  cout<<"sumWeightBtag "<<sumWeightBtag<<endl;
 
   TFile file_out ("ANoutput.root","RECREATE");
   for (int i=0;i<channels.size();++i){
     for (int k=0;k<regions.size();++k){
       for (int l=0;l<vars.size();++l){
         Hists[i][k][l]  ->Write("",TObject::kOverwrite);
-        if(data=="mc" && !fname.Contains("sys")){
+      }
+    }
+  }
+
+
+  if(data=="mc" && !fname.Contains("sys")  && ifSys){
+    for (int i=0;i<channels.size();++i){
+      file_out.mkdir("sys"+channels[i]);
+      file_out.cd("sys"+channels[i]+"/");
+      for (int k=0;k<regions.size();++k){
+        for (int l=0;l<vars.size();++l){
           for (int n=0;n<sys.size();++n){
-            if(k<2) continue;
             HistsSysUp[i][k][l][n]->Write("",TObject::kOverwrite);
             HistsSysDown[i][k][l][n]->Write("",TObject::kOverwrite);
           }
         }
       }
+      file_out.cd("");
     }
   }
-
+  file_out.cd("");
   h2_BTaggingEff_Denom_b   ->Write("",TObject::kOverwrite);
   h2_BTaggingEff_Denom_c   ->Write("",TObject::kOverwrite);
   h2_BTaggingEff_Denom_udsg->Write("",TObject::kOverwrite);
@@ -2954,8 +3099,9 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
   crossSection             ->Write("",TObject::kOverwrite);
   eleEffNum                ->Write("",TObject::kOverwrite);
   eleEffDen                ->Write("",TObject::kOverwrite);
+  truePU                   ->Write("",TObject::kOverwrite);
 
-  if(data=="mc" && !fname.Contains("sys")){
+  if(data=="mc" && !fname.Contains("sys")  && ifSys){
     file_out.mkdir("JECSys");
     file_out.cd("JECSys/");
     for (int i=0;i<channels.size();++i){
@@ -2968,62 +3114,106 @@ void MyAnalysis::Loop(TString fname, TString data, TString dataset ,string year,
     }
   }
   file_out.cd("");
-
-  if ((fname.Contains("TTTo2L2Nu")&& !fname.Contains("sys")) || fname.Contains("BNV")){
-    file_out.mkdir("reweightingSys");
-    file_out.cd("reweightingSys/");
+  if(ifSys){
+    if ((fname.Contains("TTTo2L2Nu")&& !fname.Contains("sys")) || fname.Contains("BNV")){
+      file_out.mkdir("reweightingSys");
+      file_out.cd("reweightingSys/");
+      for (int i=0;i<channels.size();++i){
+        for (int k=2;k<regions.size();++k){
+          for (int n=0;n<nScale;++n){
+            HistsSysReweightsQscale[i][k-2][0][n]->Write("",TObject::kOverwrite);
+          }
+          for (int n=0;n<nPdf;++n){
+            HistsSysReweightsPDF[i][k-2][0][n]->Write("",TObject::kOverwrite);
+          }
+          for (int n=0;n<nPS;++n){
+            HistsSysReweightsPS[i][k-2][0][n]->Write("",TObject::kOverwrite);
+          }
+        }
+      }
+    }
+    cout<<"Cleaning the memory"<<endl;
     for (int i=0;i<channels.size();++i){
-      for (int k=2;k<regions.size();++k){
-        for (int n=0;n<nScale;++n){
-          HistsSysReweightsQscale[i][k-2][0][n]->Write("",TObject::kOverwrite);
+      for (int k=0;k<regions.size();++k){
+        for (int l=0;l<vars.size();++l){
+          delete Hists[i][k][l];
+          for (int n=0;n<sys.size();++n){
+            delete HistsSysUp[i][k][l][n];
+            delete HistsSysDown[i][k][l][n];
+          }
         }
-        for (int n=0;n<nPdf;++n){
-          HistsSysReweightsPDF[i][k-2][0][n]->Write("",TObject::kOverwrite);
+      }
+    }
+    if(data=="mc" && !fname.Contains("sys")){
+      for (int i=0;i<channels.size();++i){
+        for (int k=2;k<regions.size();++k){
+          for (int n=0;n<sysJecNames.size();++n){
+            delete HistsJecUp[i][k-2][0][n];
+            delete HistsJecDown[i][k-2][0][n];
+          }
         }
-        for (int n=0;n<nPS;++n){
-          HistsSysReweightsPS[i][k-2][0][n]->Write("",TObject::kOverwrite);
+      }
+    }
+    if ((fname.Contains("TTTo2L2Nu")&& !fname.Contains("sys")) || fname.Contains("BNV")){
+      for (int i=0;i<channels.size();++i){
+        for (int k=2;k<regions.size();++k){
+          for (int n=0;n<nScale;++n){
+            delete HistsSysReweightsQscale[i][k-2][0][n];
+          }
+          for (int n=0;n<nPdf;++n){
+            delete HistsSysReweightsPDF[i][k-2][0][n];
+          }
+          for (int n=0;n<nPS;++n){
+            delete HistsSysReweightsPS[i][k-2][0][n];
+          }
         }
       }
     }
   }
-
   file_out.cd("");
   tree_out.Write() ;
   file_out.Close() ;
-  cout<<"Cleaning the memory"<<endl;
   Hists.clear();
+  Hists.shrink_to_fit();
   cout<<"Hists cleaned"<<endl;
   HistsSysUp.clear();
+  HistsSysUp.shrink_to_fit();
   cout<<"HistsSysUp cleaned"<<endl;
   HistsSysDown.clear();
+  HistsSysDown.shrink_to_fit();
   cout<<"HistsSysDown cleaned"<<endl;
   HistsJecUp.clear();
+  HistsJecUp.shrink_to_fit();
   cout<<"HistsJecUp cleaned"<<endl;
   HistsJecDown.clear();
+  HistsJecDown.shrink_to_fit();
   cout<<"HistsJecDown cleaned"<<endl;
   HistsSysReweightsPDF.clear();
+  HistsSysReweightsPDF.shrink_to_fit();
   cout<<"HistsSysReweightPDF cleaned"<<endl;
   HistsSysReweightsQscale.clear();
+  HistsSysReweightsQscale.shrink_to_fit();
   cout<<"HistsSysReweightsQscale cleaned"<<endl;
   HistsSysReweightsPS.clear();
+  HistsSysReweightsPS.shrink_to_fit();
   cout<<"HistsSysReweightPS cleaned"<<endl;
   cout<<"Job is finished"<<endl;
 
-cout<<"Total Virtual Memory: "<<getValue()<<endl;
+cout<<"Total Virtual Memory: "<<(getValue()-memoryInit)/1000.0<<" MB"<<endl;
 
 }
 
 
 void MyAnalysis::FillD3Hists(D3HistsContainer H3, int v1, std::vector<int> v2, int v3, float value, std::vector<float> weight, std::vector<WCFit> wcfit){
   for (int i = 0; i < v2.size(); ++i) {
-    H3[v1][v2[i]][v3]->Fill(value, weight[i], wcfit[i]);
-    H3[3][v2[i]][v3]->Fill(value, weight[i], wcfit[i]);
+    if(v2[i]>=0) H3[v1][v2[i]][v3]->Fill(value, weight[i], wcfit[i]);
+    if(v2[i]>=0) H3[3][v2[i]][v3]->Fill(value, weight[i], wcfit[i]);
   }
 }
 
 void MyAnalysis::FillD4Hists(D4HistsContainer H4, int v1, std::vector<int> v2, int v3, int v4, float value, std::vector<float> weight, std::vector<WCFit> wcfit){
   for (int i = 0; i < v2.size(); ++i) {
-    H4[v1][v2[i]][v3][v4]->Fill(value, weight[i], wcfit[i]);
-    H4[3][v2[i]][v3][v4]->Fill(value, weight[i], wcfit[i]);
+    if(v2[i]>=0) H4[v1][v2[i]][v3][v4]->Fill(value, weight[i], wcfit[i]);
+    if(v2[i]>=0) H4[3][v2[i]][v3][v4]->Fill(value, weight[i], wcfit[i]);
   }
 }

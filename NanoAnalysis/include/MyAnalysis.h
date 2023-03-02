@@ -1246,7 +1246,9 @@ public :
    Bool_t          HLT_Mu20;
    Bool_t          HLT_Mu27;
    Bool_t          HLT_Mu50;
+   Bool_t          HLT_TkMu50;
    Bool_t          HLT_Mu55;
+   Bool_t          HLT_Mu100;
    Bool_t          HLT_OldMu100;
    Bool_t          HLT_TkMu100;
    Bool_t          HLT_DiPFJet15_NoCaloMatched;
@@ -2931,8 +2933,10 @@ public :
    TBranch        *b_HLT_Mu20;   //!
    TBranch        *b_HLT_Mu27;   //!
    TBranch        *b_HLT_Mu50;   //!
+   TBranch        *b_HLT_TkMu50;   //!
    TBranch        *b_HLT_Mu55;   //!
    TBranch        *b_HLT_OldMu100;   //!
+   TBranch        *b_HLT_Mu100;   //!
    TBranch        *b_HLT_TkMu100;   //!
    TBranch        *b_HLT_DiPFJet15_NoCaloMatched;   //!
    TBranch        *b_HLT_DiPFJet25_NoCaloMatched;   //!
@@ -4701,8 +4705,10 @@ void MyAnalysis::Init(TTree *tree)
    fChain->SetBranchAddress("HLT_Mu20", &HLT_Mu20, &b_HLT_Mu20);
    fChain->SetBranchAddress("HLT_Mu27", &HLT_Mu27, &b_HLT_Mu27);
    fChain->SetBranchAddress("HLT_Mu50", &HLT_Mu50, &b_HLT_Mu50);
+   fChain->SetBranchAddress("HLT_TkMu50", &HLT_TkMu50, &b_HLT_TkMu50);
    fChain->SetBranchAddress("HLT_Mu55", &HLT_Mu55, &b_HLT_Mu55);
    fChain->SetBranchAddress("HLT_OldMu100", &HLT_OldMu100, &b_HLT_OldMu100);
+   fChain->SetBranchAddress("HLT_Mu100", &HLT_Mu100, &b_HLT_Mu100);
    fChain->SetBranchAddress("HLT_TkMu100", &HLT_TkMu100, &b_HLT_TkMu100);
    fChain->SetBranchAddress("HLT_DiPFJet15_NoCaloMatched", &HLT_DiPFJet15_NoCaloMatched, &b_HLT_DiPFJet15_NoCaloMatched);
    fChain->SetBranchAddress("HLT_DiPFJet25_NoCaloMatched", &HLT_DiPFJet25_NoCaloMatched, &b_HLT_DiPFJet25_NoCaloMatched);

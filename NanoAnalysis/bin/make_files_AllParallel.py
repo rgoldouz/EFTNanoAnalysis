@@ -83,14 +83,14 @@ if __name__ == '__main__':
     'TTJets': '831.76',
     'DY10to50': '18610',
     'DY50': '6077.22',
-    'DYM1500to2000': '0.002286',
-    'DYM2000to3000': '0.0005375',
-    'DYM500to700': '0.2446',
+    'DYM1500to2000': '0.00218',
+    'DYM2000to3000': '0.0005156',
+    'DYM500to700': '0.2334',
     'DYM100to200': '226.6',
     'DYM200to500': '8.1959',
     'DYM800to1000': '0.0318',
-    'DYM1000to1500': '0.0202',
-    'DYM700to800': '0.0378',
+    'DYM1000to1500': '0.01636',
+    'DYM700to800': '0.03614',
     'WZTo2L2Q':'5.595',
     'ZZTo2L2Nu':'0.564',
     'TTZToLLNuNu_M_10':'0.2529',
@@ -101,6 +101,7 @@ if __name__ == '__main__':
     'ZZTo4L':'1.256 ',
     'WWW_4F':'0.2086',
     'ZZZ':'0.01398',
+    'WZZ':'0.05565',
     'WWTo2L2Nu': '12.178',
     'WWpythia': '118.7',
     'WZpythia': '47.13',
@@ -196,6 +197,8 @@ if __name__ == '__main__':
     text += '\n'
     
     for key, value in MCSAMPLES.items():
+        if 'UL16pre' not in key:
+            continue        
         if 'data' in key:
             continue
         text += '"'
@@ -204,9 +207,47 @@ if __name__ == '__main__':
         text += str(value)
         text += ','
         text += '\n'
-    
+    text += '\n'
+    for key, value in MCSAMPLES.items():
+        if 'UL16post' not in key:
+            continue
+        if 'data' in key:
+            continue
+        text += '"'
+        text += key
+        text += '":'
+        text += str(value)
+        text += ','
+        text += '\n'
+    text += '\n'
+    for key, value in MCSAMPLES.items():
+        if 'UL17' not in key:
+            continue
+        if 'data' in key:
+            continue
+        text += '"'
+        text += key
+        text += '":'
+        text += str(value)
+        text += ','
+        text += '\n'
+    text += '\n'
+    for key, value in MCSAMPLES.items():
+        if 'UL18' not in key:
+            continue
+        if 'data' in key:
+            continue
+        text += '"'
+        text += key
+        text += '":'
+        text += str(value)
+        text += ','
+        text += '\n'    
+
     text += '\n \n'
     for key, value in MCSAMPLES.items():
+        if 'UL16pre' not in key:
+            continue
         if 'data' not in key:
             continue
         text += '"'
@@ -215,7 +256,42 @@ if __name__ == '__main__':
         text += str(value)
         text += ','
         text += '\n'
-        print(key, ' : ', value)
+    text += '\n'
+    for key, value in MCSAMPLES.items():
+        if 'UL16post' not in key:
+            continue
+        if 'data' not in key:
+            continue
+        text += '"'
+        text += key
+        text += '":'
+        text += str(value)
+        text += ','
+        text += '\n'
+    text += '\n'
+    for key, value in MCSAMPLES.items():
+        if 'UL17' not in key:
+            continue
+        if 'data' not in key:
+            continue
+        text += '"'
+        text += key
+        text += '":'
+        text += str(value)
+        text += ','
+        text += '\n'
+    text += '\n'
+    for key, value in MCSAMPLES.items():
+        if 'UL18' not in key:
+            continue
+        if 'data' not in key:
+            continue
+        text += '"'
+        text += key
+        text += '":'
+        text += str(value)
+        text += ','
+        text += '\n'
     text += '}'
     #
     print text

@@ -58,6 +58,7 @@ wf = []
 
 year=['2016preVFP', '2016postVFP', '2017','2018', '2016preVFP_2016postVFP_2017_2018']
 year=['2016preVFP_2016postVFP_2017_2018']
+#year=['2016preVFP', '2016postVFP', '2017','2018']
 top = 'T'
 lep = ['E','Mu']
 UP=['U','C']
@@ -72,6 +73,8 @@ for l in lep:
 for coup in Couplings:
     for namesig in SignalSamples:
         for numyear, nameyear in enumerate(year):
+#            if namesig != 'TDUE' or coup!='cT':
+#                continue
             key = coup +'_' + namesig +'_' +nameyear
             if path.exists('/hadoop/store/user/rgoldouz/FullProduction/LimitsTOPBNV/' + key) and len(os.listdir('/hadoop/store/user/rgoldouz/FullProduction/LimitsTOPBNV/' + key))>0:
                 continue
@@ -86,7 +89,7 @@ for coup in Couplings:
                     'Lobster_check.py',
                     'CombinedFilesBNV',
                 ],
-                outputs=[key+'_Observed_impacts.pdf', key+'_Expected_impacts.pdf', key+'_results.tex'],
+                outputs=[key+'_Observed_impacts.pdf', key+'_Expected_mu0_impacts.pdf', key+'_Expected_mu1_impacts.pdf', key+'_results.tex'],
                 dataset=EmptyDataset(),
                 category=gs_resources
             )

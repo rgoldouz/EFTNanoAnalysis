@@ -120,7 +120,7 @@ regions=["llB1"]
 #nominalHists=['tt','LfvVectorEmutc', 'LfvVectorEmutu']
 #nominalHists=['LFVStVecU', 'LFVTtVecU','LFVStVecC', 'LFVTtVecC']
 nominalHists=['tt']
-nominalHists=['STBNV']
+#nominalHists=['STBNV']
 #for obj in my_list: # obj is TKey
 #    if obj.GetClassName() == "TH1F":
 #        Hists.append(obj.GetName())
@@ -146,7 +146,9 @@ for numyear, nameyear in enumerate(year):
  #                       continue
 #                    print str(b+1)+','+str(error.GetBinError(b+1))+'/'+str(error.GetBinContent(b+1))+'='+str(error.GetBinError(b+1)/error.GetBinContent(b+1))
         #    print H.split('_')[0]
+            if H.split('_')[0] not in nominalHists:
 #            if H.split('_')[0] not in nominalHists or ('CR' not in H and 'Tune' not in H and 'hdamp' not in H):
+                continue
 ##            if H.split('_')[0] not in nominalHists or 'muIsoSf' not in H:
 #            if H.split('_')[0] not in nominalHists or 'jer' not in H:
             if H.split('_')[0] not in nominalHists:
@@ -154,8 +156,8 @@ for numyear, nameyear in enumerate(year):
 #            print H
         #    print H[-2:]
             if H[-2:]=='Up':
-                A1 = f1.Get(H.split('_')[0] + '_'+H.split('_')[1])
-#                A1 = f1.Get(H.split('_')[0])
+#                A1 = f1.Get(H.split('_')[0] + '_'+H.split('_')[1])
+                A1 = f1.Get(H.split('_')[0])
                 A2 = f1.Get(H)
                 A3 = f1.Get(H[:-2]+'Down')
                 compare3Hist(A1,A2,A3,'nominal', 'Up','Down',nameyear + namereg+ H[:-2] ,nameyear + namereg+H[:-2])

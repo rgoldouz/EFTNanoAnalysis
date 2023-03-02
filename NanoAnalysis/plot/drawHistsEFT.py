@@ -16,6 +16,37 @@ from ROOT import THStack
 import gc
 TGaxis.SetMaxDigits(2)
 
+bins = array( 'd',[-1,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.75,0.9,1] )
+binsmll= array( 'd',[0,20,40,60,80,100,140,200,300,400,500,800,1200,2000] )
+binsptl = array( 'd',[0,40,80,100,150,200,300,400,500,1000,1500] )
+colors =  [ROOT.kBlack,ROOT.kYellow,ROOT.kGreen,ROOT.kBlue-3,ROOT.kRed-4,ROOT.kOrange-3, ROOT.kPink, ROOT.kViolet-1,ROOT.kViolet+8,ROOT.kRed-5,ROOT.kSpring-1,ROOT.kGray+3]
+
+def EFTtoNormal(H, wc):
+    hpx    = ROOT.TH1F( H.GetName(), H.GetName(), H.GetXaxis().GetNbins(), H.GetXaxis().GetXmin(),H.GetXaxis().GetXmax() )
+    r=1
+    for b in range(hpx.GetNbinsX()):
+#        if H.GetBinContent(b+1,ROOT.WCPoint("NONE"))>0:
+#            r = H.GetBinError(b+1)/H.GetBinContent(b+1,ROOT.WCPoint("NONE"))
+        hpx.SetBinContent(b+1, H.GetBinContent(b+1,wc))
+        hpx.SetBinError(b+1, H.GetBinError(b+1))
+    hpx.SetLineColor(H.GetLineColor())
+    hpx.SetLineStyle(H.GetLineStyle())
+    if hpx.Integral()>0:
+        hpx.Scale(1/hpx.Integral())
+    return hpx
+
+def TH1EFTtoTH1(H, wc):
+    hpx    = ROOT.TH1F( H.GetName(), H.GetName(), H.GetXaxis().GetNbins(), H.GetXaxis().GetXmin(),H.GetXaxis().GetXmax() )
+    r=1
+    for b in range(hpx.GetNbinsX()):
+ #       if H.GetBinContent(b+1,ROOT.WCPoint(wc))>0:
+#            r = H.GetBinError(b+1)/H.GetBinContent(b+1,ROOT.WCPoint("NONE"))
+        hpx.SetBinContent(b+1, H.GetBinContent(b+1,wc))
+        hpx.SetBinError(b+1, H.GetBinError(b+1))
+    hpx.SetLineColor(H.GetLineColor())
+    hpx.SetLineStyle(H.GetLineStyle())
+    return hpx
+
 def cutFlowTable(hists, samples, regions, ch, year,caption='2016', nsig=6):
     mcSum = list(0 for i in xrange(0,len(regions)))
     for ids, s in enumerate(samples):
@@ -67,19 +98,15 @@ def cutFlowTable(hists, samples, regions, ch, year,caption='2016', nsig=6):
     print table
 
 def stackPlots(hists, SignalHists, Fnames, ch = "channel", reg = "region", year='2016', var="sample", varname="v"):
+    setlog=False
+    if 'BDT' in varname:
+        setlog=True
     if not os.path.exists(year):
        os.makedirs(year)
     if not os.path.exists(year + '/' + ch):
        os.makedirs(year + '/' + ch)
     if not os.path.exists(year + '/' + ch +'/'+reg):
        os.makedirs(year + '/' + ch +'/'+reg)
-
-    for n,G in enumerate(hists):
-        if 'BDT' in varname:
-            hists[n].GetXaxis().SetRangeUser(-0.5, 0.7)
-    for n,G in enumerate(SignalHists):
-        if 'BDT' in varname:
-            SignalHists[n].GetXaxis().SetRangeUser(-0.5, 0.7)
 
     hs = ROOT.THStack("hs","")
 #    for num in range(len(hists)):
@@ -120,9 +147,12 @@ def stackPlots(hists, SignalHists, Fnames, ch = "channel", reg = "region", year=
     pad1.cd()
     pad1.SetLogx(ROOT.kFALSE)
     pad2.SetLogx(ROOT.kFALSE)
-    pad1.SetLogy(ROOT.kFALSE)
+#    pad1.SetLogy(ROOT.kFALSE)
+    pad1.SetLogy(ROOT.kTRUE)
+    if setlog:
+        pad1.SetLogy(ROOT.kTRUE)
 
-    y_min=0
+    y_min=0.1
     y_max=1.6*dummy.GetMaximum()
     dummy.SetMarkerStyle(20)
     dummy.SetMarkerSize(1.2)
@@ -133,11 +163,6 @@ def stackPlots(hists, SignalHists, Fnames, ch = "channel", reg = "region", year=
     dummy.GetYaxis().SetTitleSize(0.07)
     dummy.GetYaxis().SetLabelSize(0.04)
     dummy.GetYaxis().SetRangeUser(y_min,y_max)
-    if 'BDT' in varname:
-        dummy.GetXaxis().SetRangeUser(-0.5, 0.7)
-    if 'BDT' in var and reg == 'llB1':
-        dummy.SetLineColor(0)
-        dummy.SetMarkerSize(0)
     dummy.Draw("e")
     hs.Draw("histSAME")
     for H in SignalHists:
@@ -145,8 +170,7 @@ def stackPlots(hists, SignalHists, Fnames, ch = "channel", reg = "region", year=
         H.SetFillColor(0)
         H.SetLineStyle(9)
         H.Draw("histSAME")
-    if 'BDT' not in varname:
-        dummy.Draw("eSAME")
+    dummy.Draw("eSAME")
     dummy.Draw("AXISSAMEY+")
     dummy.Draw("AXISSAMEX+")
 
@@ -213,16 +237,13 @@ def stackPlots(hists, SignalHists, Fnames, ch = "channel", reg = "region", year=
     dummy_ratio.GetYaxis().SetTitleOffset(0.42)
     dummy_ratio.GetXaxis().SetTitleOffset(1.1)
     dummy_ratio.GetYaxis().SetNdivisions(504)    
-    dummy_ratio.GetYaxis().SetRangeUser(0.8,1.2)
+    dummy_ratio.GetYaxis().SetRangeUser(0.6,1.4)
     dummy_ratio.Divide(SumofMC)
     dummy_ratio.SetStats(ROOT.kFALSE)
     dummy_ratio.GetYaxis().SetTitle('Data/Pred.')
-    if 'BDT' in varname:
-        dummy_ratio.GetXaxis().SetRangeUser(-0.5, 0.7)
     dummy_ratio.Draw("AXISSAMEY+")
     dummy_ratio.Draw("AXISSAMEX+")
-    if 'BDT' not in varname:
-        dummy_ratio.Draw()
+    dummy_ratio.Draw()
     canvas.Print(year + '/' + ch +'/'+reg+'/'+var + ".png")
     del canvas
     gc.collect()
@@ -230,17 +251,21 @@ def stackPlots(hists, SignalHists, Fnames, ch = "channel", reg = "region", year=
 
 #year=['2016','2017','2018','All']
 year=['2016preVFP', '2016postVFP', '2017','2018','All']
-#year=['2017']
+year=['2017']
 regions=["ll","llOffZ","llB1", "llBg1"]
 #regions=["ll","llOffZ"]
-#regions=["ll","llB1", "llBg1"]
-regionsName=["2 leptons","$M_{\ell\ell}>106, MET>60$","1 b-tag", "$>$ 1 b-tag"]
+regions=["ll","llOffZ","llB1", "llBg1","llB1InZ","llB1-BDTm1to0", "llB1-BDT0to0p8", "llB1-BDT0p8to1"]
+regionsName=["ll","llOffZ","llB1", "llBg1"]
+regionsName=["ll","llOffZ","llB1", "llBg1","llB1InZ","llB1-BDTm1to0", "llB1-BDT0to0p8", "llB1-BDT0p8to1"]
 channels=["ee", "emu", "mumu","ll"];
+
 variables=["lep1Pt","lep1Eta","lep1Phi","lep2Pt","lep2Eta","lep2Phi","llM","llPt","llDr","llDphi","jet1Pt","jet1Eta","jet1Phi","njet","nbjet","Met","MetPhi","nVtx","llMZw", "topMass","topL1Dphi","topL1Dr","topL1DptOsumPt","topPt", "BDT"]
 #variables=["lep1Pt"]
 variablesName=["p_{T}(leading lepton)","#eta(leading lepton)","#Phi(leading lepton)","p_{T}(sub-leading lepton)","#eta(sub-leading lepton)","#Phi(sub-leading lepton)","M(ll)","p_{T}(ll)","#Delta R(ll)","#Delta #Phi(ll)","p_{T}(leading jet)","#eta(leading jet)","#Phi(leading jet)","Number of jets","Number of b-tagged jets","MET","#Phi(MET)","Number of vertices", "M(ll) [z window]", "top mass", "#Delta #Phi(ll, top)", "#Delta R(ll, top)", "|pt_top - pt_l1|/(pt_top + pt_l1)", "p_{T}(top)", "BDT"]
 
 HistAddress = '/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/hists/'
+
+SFDY={'2018ee': 1.1365510987619387, '2017emu': 1.3261806003138998, '2016preVFPee': 1.1633451628199767, '2017mumu': 1.3465242028877409, '2016postVFPemu': 1.462616384646022, 'Allmumu': 1.2578307798620003, 'Allemu': 1.2367413449370244, '2016preVFPmumu': 1.1158537954764174, 'Allee': 1.216005506276805, '2016postVFPmumu': 1.528904852150822, '2016postVFPee': 1.3992019749466855, '2016preVFPemu': 1.1393520594538817, '2018mumu': 1.183191225338832, '2017ee': 1.3061443536455783, '2018emu': 1.15963670483662}
 
 Samples = ['data.root','WJets.root','other.root', 'DY.root', 'ttbar.root', 'tW.root', 'BNV_ST_TBCE.root', 'BNV_ST_TBUE.root' , 'BNV_ST_TDCE.root',  'BNV_ST_TDUE.root',  'BNV_ST_TSCE.root',  'BNV_ST_TSUE.root']
 Samples = ['data.root','WJets.root','other.root', 'DY.root', 'ttbar.root', 'tW.root']
@@ -264,6 +289,15 @@ for numyear, nameyear in enumerate(year):
                 l3=[]
                 for numvar, namevar in enumerate(variables):
                     h= Files[f].Get(namech + '_' + namereg + '_' + namevar)
+                    h = TH1EFTtoTH1(h,wc1)
+                    if 'BDT' in namevar:
+                        h=h.Rebin(len(bins)-1,"",bins)
+                    if 'llM'== namevar:
+                        h=h.Rebin(len(binsmll)-1,"",binsmll)
+                    if 'lep1Pt'== namevar or 'lep2Pt'== namevar:
+                        h=h.Rebin(len(binsptl)-1,"",binsptl)
+                    if "DY" in Samples[f] and 'B1' in namereg and 'll' not in namech:
+                        h.Scale(SFDY[nameyear+namech])
 #                    print namevar + ":" + str(h.Integral())
 #                    if 'njet' in namevar:
 #                        print namech + '_' + namereg + '_' + namevar + str(h.GetBinFit(3).getDim())
@@ -289,9 +323,10 @@ for numyear, nameyear in enumerate(year):
                         Hists[numyear][f][numch][numreg][numvar].Scale(wc1)
                         HHsignal.append(Hists[numyear][f][numch][numreg][numvar])
                     else:
+                        Hists[numyear][f][numch][numreg][numvar]
                         HH.append(Hists[numyear][f][numch][numreg][numvar])
-
                 stackPlots(HH, HHsignal, SamplesName, namech, namereg, nameyear,namevar,variablesName[numvar])
+    os.system('tar -cvf '+ nameyear +'.tar ' + nameyear)
 
 le = '\\documentclass{article}' + "\n"
 le += '\\usepackage{rotating}' + "\n"

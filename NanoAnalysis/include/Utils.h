@@ -29,6 +29,8 @@
 #include <bitset>
 
 double dR(double eta1, double phi1, double eta2, double phi2);
+int parseLine(char* line);
+int getValue();
 void displayProgress(long current, long max);
 Double_t deltaPhi(Double_t phi1, Double_t phi2);
 Double_t deltaR(Double_t eta1, Double_t phi1, Double_t eta2, Double_t phi2);

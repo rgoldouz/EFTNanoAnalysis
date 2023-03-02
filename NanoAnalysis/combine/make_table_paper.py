@@ -78,7 +78,7 @@ for numyear, nameyear in enumerate(year):
                             muP1 = float(line.split()[-1])/10.0
                         if 'Expected 97.5' in line:
                             muP2 = float(line.split()[-1])/10.0
-                    table +=  ' & ' + CouplingsLatex[numcoup] +  ' & ' +  '{:.3}'.format(math.sqrt(mu)) + ' & ' + '{:.3}'.format(0.00) + ' & ' + '{:.3}'.format(BR*mu)+ ' & ' + '{:.3}'.format(0.0) +  '   \\\\  '+ "\n"
+                    table +=  ' & ' + CouplingsLatex[numcoup] +  ' & ' +  '{:.3}'.format(math.sqrt(mu)) + ' & ' + '{:.3}'.format(math.sqrt(Obs)) + ' & ' + '{:.3}'.format(BR*mu)+ ' & ' + '{:.3}'.format(BR*Obs) +  '   \\\\  '+ "\n"
             table += '[\cmsTabSkip]' + "\n"
     table += '\\hline' + "\n"
     table += '\\end{tabular}}' + "\n"

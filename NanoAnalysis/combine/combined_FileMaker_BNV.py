@@ -85,9 +85,8 @@ sys = ["eleRecoSf", "eleIDSf", "muIdIsoSf", "bcTagSf", "LTagSf","pu", "prefiring
 sysJecNames = ["AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","Fragmentation","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF","PileUpPtRef","RelativeFSR","RelativePtBB","RelativePtEC1","RelativePtEC2","RelativePtHF","RelativeBal","RelativeSample","RelativeStatEC","RelativeStatFSR","RelativeStatHF","SinglePionECAL","SinglePionHCAL","TimePtEta"]
 sysJecNamesUnCorr = ["AbsoluteStat","RelativePtEC1","RelativePtEC2","RelativeSample","RelativeStatEC","RelativeStatFSR","RelativeStatHF","TimePtEta"]
 sysJecNamesCorr =["AbsoluteMPFBias","AbsoluteScale","FlavorQCD","Fragmentation","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF","PileUpPtRef","RelativeFSR","RelativePtBB","RelativePtHF","RelativeBal","RelativeStatFSR","RelativeStatHF"]
-
 HistAddress = '/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/hists/'
-
+SFDY={'2018ee': 1.1365510987619387, '2017emu': 1.3261806003138998, '2016preVFPee': 1.1633451628199767, '2017mumu': 1.3465242028877409, '2016postVFPemu': 1.462616384646022, 'Allmumu': 1.2578307798620003, 'Allemu': 1.2367413449370244, '2016preVFPmumu': 1.1158537954764174, 'Allee': 1.216005506276805, '2016postVFPmumu': 1.528904852150822, '2016postVFPee': 1.3992019749466855, '2016preVFPemu': 1.1393520594538817, '2018mumu': 1.183191225338832, '2017ee': 1.3061443536455783, '2018emu': 1.15963670483662}
 Samples = ['data.root','other.root', 'DY.root', 'ttbar.root', 'tW.root',
 'STBNV_TBCE.root',
 'STBNV_TBUE.root',
@@ -177,7 +176,7 @@ SignalSamples=[
 
 wc1 = ROOT.WCPoint("EFTrwgt1_cT_0_cS_1")
 wcName = "cS"
-
+print 'making combine file for '+ wcName
 colors =  [ROOT.kBlack,ROOT.kYellow,ROOT.kGreen,ROOT.kBlue-3,ROOT.kRed-4,ROOT.kOrange-3, ROOT.kOrange-6, 
 ROOT.kBlue, ROOT.kBlue-7, ROOT.kViolet, ROOT.kViolet-5,ROOT.kAzure-9, ROOT.kAzure+10,
 ROOT.kGreen, ROOT.kGreen+2, ROOT.kTeal-9, ROOT.kTeal+10, ROOT.kSpring-7, ROOT.kSpring+9,
@@ -242,12 +241,14 @@ for numyear, nameyear in enumerate(year):
                         for b in range(h.GetNbinsX()):
                             h.SetBinError(b+1,0)
                     hNormal = TH1EFTtoTH1(h,wc1)
+                    if "DY" in Samples[f]:
+                        hNormal.Scale(SFDY[nameyear+namech])
                     l3.append(hNormal)
                     copyl3.append(h.Clone())
                     if 'data' in Samples[f]:
                         continue
                     for numsys, namesys in enumerate(sys):
-                        h= Files[f].Get(namech + '_' + namereg + '_' + namevar+ '_' + namesys+ '_Up')
+                        h= Files[f].Get('sys' + namech + '/' + namech + '_' + namereg + '_' + namevar+ '_' + namesys+ '_Up')
                         h.SetFillColor(colors[f])
                         h.SetLineColor(colors[f])
 #                        h.SetBinContent(h.GetXaxis().GetNbins(), h.GetBinContent(h.GetXaxis().GetNbins()) + h.GetBinContent(h.GetXaxis().GetNbins()+1))
@@ -260,8 +261,10 @@ for numyear, nameyear in enumerate(year):
                         if "BNV" in Samples[f]:
                             h.Scale(wc1)
                         hNormal = TH1EFTtoTH1(h,wc1)
+                        if "DY" in Samples[f]:
+                            hNormal.Scale(SFDY[nameyear+namech])
                         SysUpl4.append(hNormal)
-                        h= Files[f].Get(namech + '_' + namereg + '_' + namevar+ '_' + namesys+ '_Down')
+                        h= Files[f].Get('sys' + namech + '/' + namech + '_' + namereg + '_' + namevar+ '_' + namesys+ '_Down')
                         h.SetFillColor(colors[f])
                         h.SetLineColor(colors[f])
 #                        h.SetBinContent(h.GetXaxis().GetNbins(), h.GetBinContent(h.GetXaxis().GetNbins()) + h.GetBinContent(h.GetXaxis().GetNbins()+1))
@@ -274,6 +277,8 @@ for numyear, nameyear in enumerate(year):
                         if "BNV" in Samples[f]:
                             h.Scale(wc1)
                         hNormal = TH1EFTtoTH1(h,wc1)
+                        if "DY" in Samples[f]:
+                            hNormal.Scale(SFDY[nameyear+namech])
                         SysDownl4.append(hNormal)
                     for numsys, namesys in enumerate(sysJecNames):
                         h= Files[f].Get('JECSys/' +namech + '_' + namereg + '_' + namevar+ '_' + namesys+ '_Up')
@@ -287,6 +292,8 @@ for numyear, nameyear in enumerate(year):
                         if "BNV" in Samples[f]:
                             h.Scale(wc1)
                         hNormal = TH1EFTtoTH1(h,wc1)
+                        if "DY" in Samples[f]:
+                            hNormal.Scale(SFDY[nameyear+namech])
                         JecUpl4.append(hNormal)
                         h= Files[f].Get('JECSys/' + namech + '_' + namereg + '_' + namevar+ '_' + namesys+ '_Down')
 #                        h.SetBinContent(h.GetXaxis().GetNbins(), h.GetBinContent(h.GetXaxis().GetNbins()) + h.GetBinContent(h.GetXaxis().GetNbins()+1))
@@ -299,6 +306,8 @@ for numyear, nameyear in enumerate(year):
                         if "BNV" in Samples[f]:
                             h.Scale(wc1)
                         hNormal = TH1EFTtoTH1(h,wc1)
+                        if "DY" in Samples[f]:
+                            hNormal.Scale(SFDY[nameyear+namech])
                         JecDownl4.append(hNormal)
                     SysUpl3.append(SysUpl4)
                     SysDownl3.append(SysDownl4)
@@ -734,14 +743,17 @@ for namesig, valueD in SignalSamplesD.items():
                 if '2016' in nameyear:
                     T1 = T1 + 'lumi2016'.ljust(35)+'lnN'.ljust(10) + '1.01'.ljust(40) + '1.01'.ljust(40) + '1.01'.ljust(40) + '1.01'.ljust(40) + '1.01'.ljust(40) + '1.01'.ljust(40) +'\n'    
                     T1 = T1 + 'lumiCorr16-17-18'.ljust(35)+'lnN'.ljust(10) + '1.006'.ljust(40) + '1.006'.ljust(40) + '1.006'.ljust(40) + '1.006'.ljust(40) + '1.006'.ljust(40) + '1.006'.ljust(40) +'\n'
+                    T1 = T1 + 'DY_METmodel2016'.ljust(35)+'lnN'.ljust(10) + '-'.ljust(40) + '-'.ljust(40) + '-'.ljust(40) + '1.2'.ljust(40) + '-'.ljust(40) + '-'.ljust(40) +'\n'
                 if '2017' in nameyear:
                     T1 = T1 + 'lumi2017'.ljust(35)+'lnN'.ljust(10) + '1.02'.ljust(40) + '1.02'.ljust(40) + '1.02'.ljust(40) + '1.02'.ljust(40) + '1.02'.ljust(40) + '1.02'.ljust(40) +'\n'
                     T1 = T1 + 'lumiCorr16-17-18'.ljust(35)+'lnN'.ljust(10) + '1.009'.ljust(40) + '1.009'.ljust(40) + '1.009'.ljust(40) + '1.009'.ljust(40) + '1.009'.ljust(40) + '1.009'.ljust(40) +'\n'
                     T1 = T1 + 'lumiCorr17-18'.ljust(35)+'lnN'.ljust(10) + '1.006'.ljust(40) + '1.006'.ljust(40) + '1.006'.ljust(40) + '1.006'.ljust(40) + '1.006'.ljust(40) + '1.006'.ljust(40) +'\n'
+                    T1 = T1 + 'DY_METmodel2017'.ljust(35)+'lnN'.ljust(10) + '-'.ljust(40) + '-'.ljust(40) + '-'.ljust(40) + '1.2'.ljust(40) + '-'.ljust(40) + '-'.ljust(40) +'\n'
                 if '2018' in nameyear:
                     T1 = T1 + 'lumi2018'.ljust(35)+'lnN'.ljust(10) + '1.015'.ljust(40) + '1.015'.ljust(40) + '1.015'.ljust(40) + '1.015'.ljust(40) + '1.015'.ljust(40) + '1.015'.ljust(40) +'\n'
                     T1 = T1 + 'lumiCorr16-17-18'.ljust(35)+'lnN'.ljust(10) + '1.02'.ljust(40) + '1.02'.ljust(40) + '1.02'.ljust(40) + '1.02'.ljust(40) + '1.02'.ljust(40) + '1.02'.ljust(40) +'\n'
                     T1 = T1 + 'lumiCorr17-18'.ljust(35)+'lnN'.ljust(10) + '1.002'.ljust(40) + '1.002'.ljust(40) + '1.002'.ljust(40) + '1.002'.ljust(40) + '1.002'.ljust(40) + '1.002'.ljust(40) +'\n'
+                    T1 = T1 + 'DY_METmodel2018'.ljust(35)+'lnN'.ljust(10) + '-'.ljust(40) + '-'.ljust(40) + '-'.ljust(40) + '2.0'.ljust(40) + '-'.ljust(40) + '-'.ljust(40) +'\n'
                 if 'Mu' in namesig:
                     T1 = T1 + 'MuTtDyDiff'.ljust(35)+'lnN'.ljust(10) + '1.005'.ljust(40) + '1.005'.ljust(40) + '1.005'.ljust(40) + '1.005'.ljust(40) + '1.005'.ljust(40) + '1.005'.ljust(40) +'\n'
                 else:
