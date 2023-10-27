@@ -20,6 +20,7 @@
 #include "BTagCalibrationStandalone.h"
 #include <memory>
 #include <TLorentzVector.h>
+#include <TGraph.h>
 #include "TMVA/Tools.h"
 #include "TMVA/Reader.h"
 #include "TMVA/MethodCuts.h"
@@ -27,7 +28,9 @@
 #include <map>
 #include <string>
 #include <bitset>
+#include "TGraphAsymmErrors.h"
 
+float GetGraphYError(const  TGraphAsymmErrors* graph, Double_t xValue);
 double dR(double eta1, double phi1, double eta2, double phi2);
 int parseLine(char* line);
 int getValue();

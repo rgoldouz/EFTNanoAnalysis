@@ -104,7 +104,7 @@ def compare3Hist(A, B, C, textA="A", textB="B", textC="C",label_name="sample", c
     x_max= ratioB.GetBinLowEdge(nbin)+ratioB.GetBinWidth(nbin)
 #    ratio_y_min=0.95*r.GetBinContent(r.FindFirstBinAbove(0))
 #    ratio_y_max=1.05*r.GetBinContent(r.GetMaximumBin())
-    dummy_ratio = ROOT.TH2D("dummy_ratio","",nbin,x_min,x_max,1,0.9,1.1)
+    dummy_ratio = ROOT.TH2D("dummy_ratio","",nbin,x_min,x_max,1,0.95,1.05)
     dummy_ratio.SetStats(ROOT.kFALSE)
     dummy_ratio.GetYaxis().SetTitle('Ratio')
     dummy_ratio.GetXaxis().SetTitle("")
@@ -140,21 +140,27 @@ channels=["ee", "emu", "mumu"];
 regions=["llB1"]
 
 #nominalHists=['tt','LfvVectorEmutc', 'LfvVectorEmutu']
-#nominalHists=['LFVStVecU', 'LFVTtVecU','LFVStVecC', 'LFVTtVecC']
+#nominalHists=['tt']
 nominalHists=['tt']
-
+nominalHists=[]
 #bins = array( 'd',[-0.6,-0.4,-0.2,-0.15,-0.1,-0.05,0,0.05,0.1,0.15,0.2,0.25,0.6,0.8] )
 #bins = array( 'd',[-0.6,-0.5,-0.3,-0.2,-0.1,0,0.1,0.20,0.3,0.4] )
 #bins = array( 'd',[-1,-0.5,-0.3,-0.25,-0.2,-0.15,-0.1,-0.05,0,0.05,0.1,0.15,0.20,0.25,0.4,1] )
 #bins = array( 'd',[-1,-0.9,-0.8,-0.7,-0.6,-0.5,-0.4,-0.3,-0.2,-0.1,0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1] )
 #bins = array( 'd',[-1,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,1] )
-bins = array( 'd',[-1,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.75,0.9,1] )
+#bins = array( 'd',[-1,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.75,0.9,1] )
+bins = array( 'd',[-1,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,1] )
 
 couplings=['cS','cT']
 os.system("rm -rf CombinedFilesRebinned")
 os.system("rm -rf CombinedFilesRebinnedSmooth")
 os.system("mkdir CombinedFilesRebinned")
 os.system("mkdir CombinedFilesRebinnedSmooth")
+smoothingSys=['CR','Tune','hdamp']
+plotingSys=['CR','Tune','hdamp','muonRes', 'muonScale']
+for p in plotingSys:
+    os.system("rm -rf error"+p)
+    os.system("mkdir error"+p)
 for coup in couplings:
     for numyear, nameyear in enumerate(year):
         for numch, namech in enumerate(channels):
@@ -187,10 +193,24 @@ for coup in couplings:
                        RF.Scale(0.10)
                     RF.Write()
                 for H in Hists:
-                    if H.split('_')[0] not in nominalHists or ('CR' not in H and 'Tune' not in H and 'hdamp' not in H):
-                        continue;
+#                    print H
+#                    if H.split('_')[0] not in nominalHists or ('CR' not in H and 'Tune' not in H and 'hdamp' not in H):
+#                    if H.split('_')[0] not in nominalHists or ('QS' not in H and 'pdf' not in H):
+#                    if '_'.join(H.split('_')[:-1]) not in nominalHists or ('muonRes' not in H):
+#                    if H.split('_')[0] not in nominalHists or nameyear!="2018":
+                    smoothHist=False
+                    for sname in smoothingSys:
+                        if sname in H:
+                            smoothHist=True
+#                    if H.split('_')[0] not in nominalHists or ('CR' not in H and 'Tune' not in H and 'hdamp' not in H):
+#                        continue;
                     if H[-2:]=='Up':
-                        A1 = f1.Get(H.split('_')[0])
+#                        print H + ','+'_'.join(H.split('_')[:-1])+','+H[:-2]+'Down'
+                        nominalH='_'.join(H.split('_')[:-1])
+                        if '_'.join(H.split('_')[:-1]) not in Hists:
+                            nominalH='_'.join(H.split('_')[:-2])
+                        A1 = f1.Get(nominalH)
+#                        A1 = f1.Get(H[:-2])
                         A2 = f1.Get(H)
                         A3 = f1.Get(H[:-2]+'Down')
                         RA1 = A1.Clone()
@@ -206,26 +226,32 @@ for coup in couplings:
                         SRA22 = Rebin(CSRA2,bins)
         #                SRA22.Divide(Rebin(RA1,bins))
                         SRA33 = Rebin(CSRA3,bins)
+                        if nominalH in nominalHists:
+                            for pname in plotingSys:
+                                if pname in H:
         #                SRA33.Divide(Rebin(RA1,bins))
         #                compare3Hist(A1,A2,A3,'nominal', 'Up','Down',nameyear + namereg+ H[:-2] ,nameyear + namereg+H[:-2])
 #                        compare3Hist(RA1,RA2,RA3,'nominal', 'Up','Down',nameyear + namereg+ H[:-2] ,nameyear + namereg+H[:-2])
-        #                compare3Hist(Rebin(RA1,bins),Rebin(Smoothing(RA2,0.05),bins),Rebin(Smoothing(RA3,0.05),bins),'nominal', 'Up','Down',nameyear + namereg+ H[:-2] ,'smooth'+nameyear + namereg+H[:-2])
+#                                    compare3Hist(Rebin(RA1,bins),Rebin(Smoothing(RA2,0.4),bins),Rebin(Smoothing(RA3,0.4),bins),'nominal', 'Up','Down',nameyear + namereg+ H[:-2] ,'smooth'+nameyear + namereg+H[:-2])
         #                compare3Hist(RA1,RA2,Smoothing(RA2,1),'nominal', 'Up','Down',nameyear + namereg+ H[:-2] ,'RA'+nameyear + namereg+H[:-2])
         #                compare3Hist(RA2,Smoothing(RA2,0.1),Smoothing(RA2,0.2),'nominal', '0.1','0.2',nameyear + namereg+ H[:-2] ,'3'+nameyear + namereg+H[:-2])
-        #                compare3Hist(Rebin(A1,bins),Rebin(A2,bins),Rebin(A3,bins),'nominal', 'Up','Down',nameyear + namereg+ H[:-2] ,'Rebin'+nameyear + namereg+H[:-2])
-        #                compare3Hist(Rebin(A1,bins),correctHist(Rebin(A1,bins),SRA22),correctHist(Rebin(A1,bins),SRA33),'nominal', 'Up','Down',nameyear + namereg+ H[:-2] ,'Rebinsmooth'+nameyear + namereg+H[:-2])
-                        compare3Hist(Rebin(A1,bins),Rebin(A2,bins),SRA22,'nominal', 'Up','smoothUP',nameyear + namereg + namech+ H[:-2] ,'RebinsmoothUP'+nameyear + namereg+ namech+H[:-2])
-                        compare3Hist(Rebin(A1,bins),Rebin(A3,bins),SRA33,'nominal', 'DOWN','smoothDOWN',nameyear + namereg+ namech+ H[:-2] ,'RebinsmoothDOWN'+nameyear + namereg+ namech+H[:-2])
-                        compare3Hist(Rebin(A1,bins),SRA22,SRA33,'nominal', 'smoothUP','smoothDOWN',nameyear + namereg+ namech+ H[:-2] ,'Rebinsmooth'+nameyear + namereg+ namech+H[:-2])
-                        compare3Hist(Rebin(A1,bins),Rebin(A2,bins),Rebin(A3,bins),'nominal', 'Up','DOWN',nameyear + namereg+ namech+ H[:-2] ,'Rebins'+nameyear + namereg+ namech+H[:-2])
-        #                RFup = correctHist(Rebin(A1,bins),SRA22)
-                        RFup = SRA22
-                        RFup.SetName(H)
-                        RFup.Write()
-        #                RFdown = correctHist(Rebin(A1,bins),SRA33)
-                        RFdown = SRA33
-                        RFdown.SetName(H[:-2]+'Down')
-                        RFdown.Write()
+                                    compare3Hist(Rebin(A1,bins),Rebin(A2,bins),Rebin(A3,bins),'nominal', 'Up','Down',nameyear + namereg+ namech+ H[:-2] ,'Rebin'+'_'.join(H.split('_')[:-1])+nameyear + namereg+ namech+H[:-2])
+#                                    compare3Hist(Rebin(A1,bins),correctHist(Rebin(A1,bins),SRA22),correctHist(Rebin(A1,bins),SRA33),'nominal', 'Up','Down',nameyear + namereg+ H[:-2] ,'Rebinsmooth'+nameyear + namereg+H[:-2])
+#                        compare3Hist(Rebin(A1,bins),Rebin(A2,bins),SRA22,'nominal', 'Up','smoothUP',nameyear + namereg + namech+ H[:-2] ,'RebinsmoothUP'+nameyear + namereg+ namech+H[:-2])
+#                        compare3Hist(Rebin(A1,bins),Rebin(A3,bins),SRA33,'nominal', 'DOWN','smoothDOWN',nameyear + namereg+ namech+ H[:-2] ,'RebinsmoothDOWN'+nameyear + namereg+ namech+H[:-2])
+                                    compare3Hist(Rebin(A1,bins),SRA22,SRA33,'nominal', 'smoothUP','smoothDOWN',nameyear + namereg+ namech+ H[:-2] ,'Rebinsmooth'+nameyear + namereg+ namech+H[:-2])
+#                        compare3Hist(Rebin(A1,bins),Rebin(A2,bins),Rebin(A3,bins),'nominal', 'Up','DOWN',nameyear + namereg+ namech+ H[:-2] ,'Rebins'+nameyear + namereg+ namech+H[:-2])
+                                    os.system("mv *.png error"+pname) 
+                        if smoothHist:
+                            print "smoothing -> " + H 
+            #                RFup = correctHist(Rebin(A1,bins),SRA22)
+                            RFup = SRA22
+                            RFup.SetName(H)
+                            RFup.Write()
+            #                RFdown = correctHist(Rebin(A1,bins),SRA33)
+                            RFdown = SRA33
+                            RFdown.SetName(H[:-2]+'Down')
+                            RFdown.Write()
                 hfileS.Close()
                 f1.Close()
 
@@ -233,7 +259,8 @@ os.system("rm -rf CombinedFilesBNV")
 os.system("mkdir CombinedFilesBNV")
 os.system("cp -r CombinedFilesOriginal/*.txt CombinedFilesBNV")
 os.system("cp -r CombinedFilesRebinned/* CombinedFilesBNV")
-#os.system("cp -r CombinedFilesRebinnedSmooth/* CombinedFilesBNV")
+os.system("cp -r CombinedFilesOriginal/*.txt CombinedFilesRebinnedSmooth")
+os.system("cp -r CombinedFilesRebinnedSmooth/* CombinedFilesBNV")
 
 
 

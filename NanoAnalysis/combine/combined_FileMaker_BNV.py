@@ -80,11 +80,11 @@ LumiErr = [0.018, 0.018, 0.018, 0.018]
 regions=["llB1"]
 channels=["ee", "emu", "mumu"];
 variables=["BDT"]
-sys = ["eleRecoSf", "eleIDSf", "muIdIsoSf", "bcTagSf", "LTagSf","pu", "prefiring", "trigSF", "jer","muonScale","electronScale","muonRes", "unclusMET", "bcTagSfUnCorr", "LTagSfUnCorr","JetPuID" ]
+sys = ["eleRecoSf", "eleIDSf", "muIdIsoSf", "bcTagSf", "LTagSf","pu", "prefiring", "trigSF", "jer","muonScale","electronScale","muonRes", "unclusMET", "bcTagSfUnCorr", "LTagSfUnCorr","JetPuID","topPt"]
 #"eleRecoSf", "eleIDSf", "muIdSf", "muIsoSf", "bcTagSf", "LTagSf", "pu", "prefiring", "trigSF",  "muonScale","electronScale","muonRes","unclusMET", "bcTagSfUnCorr", "LTagSfUnCorr"]
-sysJecNames = ["AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","FlavorQCD","Fragmentation","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF","PileUpPtRef","RelativeFSR","RelativePtBB","RelativePtEC1","RelativePtEC2","RelativePtHF","RelativeBal","RelativeSample","RelativeStatEC","RelativeStatFSR","RelativeStatHF","SinglePionECAL","SinglePionHCAL","TimePtEta"]
+sysJecNames = ["AbsoluteMPFBias","AbsoluteScale","AbsoluteStat","Fragmentation","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF","PileUpPtRef","RelativeFSR","RelativePtBB","RelativePtEC1","RelativePtEC2","RelativePtHF","RelativeBal","RelativeSample","RelativeStatEC","RelativeStatFSR","RelativeStatHF","SinglePionECAL","SinglePionHCAL","TimePtEta"]
 sysJecNamesUnCorr = ["AbsoluteStat","RelativePtEC1","RelativePtEC2","RelativeSample","RelativeStatEC","RelativeStatFSR","RelativeStatHF","TimePtEta"]
-sysJecNamesCorr =["AbsoluteMPFBias","AbsoluteScale","FlavorQCD","Fragmentation","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF","PileUpPtRef","RelativeFSR","RelativePtBB","RelativePtHF","RelativeBal","RelativeStatFSR","RelativeStatHF"]
+sysJecNamesCorr =["AbsoluteMPFBias","AbsoluteScale","Fragmentation","PileUpPtBB","PileUpPtEC1","PileUpPtEC2","PileUpPtHF","PileUpPtRef","RelativeFSR","RelativePtBB","RelativePtHF","RelativeBal","RelativeStatFSR","RelativeStatHF"]
 HistAddress = '/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/hists/'
 SFDY={'2018ee': 1.1365510987619387, '2017emu': 1.3261806003138998, '2016preVFPee': 1.1633451628199767, '2017mumu': 1.3465242028877409, '2016postVFPemu': 1.462616384646022, 'Allmumu': 1.2578307798620003, 'Allemu': 1.2367413449370244, '2016preVFPmumu': 1.1158537954764174, 'Allee': 1.216005506276805, '2016postVFPmumu': 1.528904852150822, '2016postVFPee': 1.3992019749466855, '2016preVFPemu': 1.1393520594538817, '2018mumu': 1.183191225338832, '2017ee': 1.3061443536455783, '2018emu': 1.15963670483662}
 Samples = ['data.root','other.root', 'DY.root', 'ttbar.root', 'tW.root',
@@ -174,8 +174,8 @@ SignalSamples=[
 ]
 
 
-wc1 = ROOT.WCPoint("EFTrwgt1_cT_0_cS_1")
-wcName = "cS"
+wc1 = ROOT.WCPoint("EFTrwgt1_cT_1_cS_0")
+wcName = "cT"
 print 'making combine file for '+ wcName
 colors =  [ROOT.kBlack,ROOT.kYellow,ROOT.kGreen,ROOT.kBlue-3,ROOT.kRed-4,ROOT.kOrange-3, ROOT.kOrange-6, 
 ROOT.kBlue, ROOT.kBlue-7, ROOT.kViolet, ROOT.kViolet-5,ROOT.kAzure-9, ROOT.kAzure+10,
@@ -268,6 +268,8 @@ for numyear, nameyear in enumerate(year):
                         h.SetFillColor(colors[f])
                         h.SetLineColor(colors[f])
 #                        h.SetBinContent(h.GetXaxis().GetNbins(), h.GetBinContent(h.GetXaxis().GetNbins()) + h.GetBinContent(h.GetXaxis().GetNbins()+1))
+                        if(h.GetBinContent(h.GetXaxis().GetNbins()+1,wc1)>0):
+                            print 'sys' + namech + '/' + namech + '_' + namereg + '_' + namevar+ '_' + namesys+ '_Down' + str(h.GetBinContent(h.GetXaxis().GetNbins()+1,wc1))
                         for b in range(h.GetNbinsX()):
                             if h.GetBinContent(b+1,wc1)<0:
                                 h.SetBinContent(b+1,0)
@@ -763,9 +765,12 @@ for namesig, valueD in SignalSamplesD.items():
                 for numsys, namesys in enumerate(sysJecNamesUnCorr):
                     T1 = T1 + 'Y'+  nameyear + 'jes' + namesys.ljust(27)  +'shape'.ljust(10)  + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) +'\n'
                 for b in sys:
-                    if 'jer' in b or 'unclusMET' in b or 'UnCorr' in b:
+                    if 'jer' in b or 'unclusMET' in b or 'UnCorr' in b or 'topPt' in b or "muonScale" in b or "muonRes" in b:
                         continue 
                     T1 = T1 +  b.ljust(35)  +'shape'.ljust(10)  + '1'.ljust(40) + '1'.ljust(40)  + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) +'\n'
+                T1 = T1 +  'muonScale'.ljust(35)  +'shape'.ljust(10)  + '-'.ljust(40) + '-'.ljust(40)  + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) +'\n'
+                T1 = T1 +  'muonRes'.ljust(35)  +'shape'.ljust(10)  + '-'.ljust(40) + '-'.ljust(40)  + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) +'\n'
+                T1 = T1 +  'topPt'.ljust(35)  +'shape'.ljust(10)  + '-'.ljust(40) + '-'.ljust(40)  + '-'.ljust(40) + '-'.ljust(40) + '1'.ljust(40) + '-'.ljust(40) +'\n'
                 T1 = T1 + 'Y'+ nameyear + 'unclusMET'.ljust(30)  +'shape'.ljust(10)  + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) +'\n'
                 T1 = T1 + 'Y'+ nameyear + 'bcTagSfUnCorr'.ljust(30)  +'shape'.ljust(10)  + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) +'\n'
                 T1 = T1 + 'Y'+ nameyear + 'LTagSfUnCorr'.ljust(30)  +'shape'.ljust(10)  + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) + '1'.ljust(40) +'\n'

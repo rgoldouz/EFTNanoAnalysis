@@ -27,7 +27,8 @@ TGaxis.SetMaxDigits(1)
 #bins = array( 'd',[-1,-0.6,-0.4,-0.25,-0.2,-0.15,-0.1,-0.05,0,0.05,0.1,0.15,0.2,0.25,0.35,0.6,0.8,1] )
 #bins = array( 'd',[-1,-0.6,-0.4,-0.2,-0.15,-0.1,-0.05,0,0.05,0.1,0.15,0.2,0.3,0.6,1] )
 #bins = array( 'd',[-0.6,-0.4,-0.2,-0.15,-0.1,-0.05,0,0.05,0.1,0.15,0.20,0.26,0.6,0.8] )
-bins = array( 'd',[-1,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.75,0.9,1] )
+#bins = array( 'd',[-1,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.75,0.9,1] )
+bins = array( 'd',[-1,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,1] )
 
 def EFTtoNormal(H, wc):
     hpx    = ROOT.TH1F( H.GetName(), H.GetName(), H.GetXaxis().GetNbins(), H.GetXaxis().GetXmin(),H.GetXaxis().GetXmax() )
@@ -82,10 +83,10 @@ def stackPlotsError(hists, SignalHists, Fnames, ch = "channel", reg = "region", 
     canvas.SetBottomMargin(0.17)
     canvas.cd()
 
-    legend = ROOT.TLegend(0.4,0.7,0.9,0.88)
+    legend = ROOT.TLegend(0.45,0.6,0.85,0.88)
     legend.SetBorderSize(0)
     legend.SetTextFont(42)
-    legend.SetTextSize(0.04)
+    legend.SetTextSize(0.06)
     legend.SetNColumns(2);
 
     pad1=ROOT.TPad("pad1", "pad1", 0, 0.315, 1, 0.99 , 0)#used for the hist plot
@@ -109,10 +110,10 @@ def stackPlotsError(hists, SignalHists, Fnames, ch = "channel", reg = "region", 
     pad1.SetLogy(ROOT.kTRUE)
 
 
-    y_min=10
+    y_min=100
     y_max=100000
     if year=='All':
-        y_max=200000
+        y_max=150000
 #    y_max=1.7*dummy.GetMaximum()
     dummy.SetMarkerStyle(20)
     dummy.SetMarkerSize(1.1)
@@ -123,9 +124,9 @@ def stackPlotsError(hists, SignalHists, Fnames, ch = "channel", reg = "region", 
     frame = pad1.DrawFrame(-1, y_min, 1, y_max)
     frame.SetTitle("")
     frame.GetYaxis().SetTitle('Events/bin')
-    frame.GetYaxis().SetTitleOffset(0.8)
-    frame.GetYaxis().SetTitleSize(0.07)
-    frame.GetYaxis().SetLabelSize(0.04)
+    frame.GetYaxis().SetTitleOffset(0.6)
+    frame.GetYaxis().SetTitleSize(0.09)
+    frame.GetYaxis().SetLabelSize(0.06)
     frame.GetYaxis().SetRangeUser(y_min,y_max)
     frame.GetXaxis().SetLabelSize(0)
     frame.GetXaxis().SetRangeUser(-1,1)
@@ -181,12 +182,12 @@ def stackPlotsError(hists, SignalHists, Fnames, ch = "channel", reg = "region", 
         chname='#mu#mu'
         figname='Figure_002-b'
     if reg=="llB1":
-        Label_channel = ROOT.TLatex(0.52,0.64,chname+',')
+        Label_channel = ROOT.TLatex(0.2,0.8,chname+',')
         Label_channel.SetNDC()
-        Label_channel.SetTextSize(0.06)
+        Label_channel.SetTextSize(0.07)
         Label_channel.SetTextFont(42)
         Label_channel.Draw("same")
-        Label_channelb = ROOT.TLatex(0.52,0.64,'     1 b-tagged')
+        Label_channelb = ROOT.TLatex(0.2,0.8,'      1 b-tagged')
         Label_channelb.SetNDC()
         Label_channelb.SetTextSize(0.06)
         Label_channelb.SetTextFont(42)
@@ -212,9 +213,10 @@ def stackPlotsError(hists, SignalHists, Fnames, ch = "channel", reg = "region", 
 
     legend.AddEntry(dummy,Fnames[0],'ep')
     for num in range(1,len(hists)):
-        if 'Jets' in Fnames[num]:
+        kn = len(hists) - num
+        if 'Jets' in Fnames[kn]:
             continue
-        legend.AddEntry(hists[num],Fnames[num],'F')
+        legend.AddEntry(hists[kn],Fnames[kn],'F')
 #    for H in range(len(SignalHists)):
 #        legend.AddEntry(SignalHists[H], Fnames[len(hists)+H],'L')
 #    legend.AddEntry(None,'','')
@@ -264,20 +266,20 @@ def stackPlotsError(hists, SignalHists, Fnames, ch = "channel", reg = "region", 
     frame2.GetXaxis().SetTitle(varname)
     frame2.GetYaxis().CenterTitle()
     frame2.GetXaxis().SetMoreLogLabels()
-    frame2.GetXaxis().SetNoExponent()  
-    frame2.GetXaxis().SetTitleSize(0.04/0.3)
-    frame2.GetYaxis().SetTitleSize(0.04/0.3)
+    frame2.GetXaxis().SetNoExponent()
+    frame2.GetXaxis().SetTitleSize(0.22)
+    frame2.GetYaxis().SetTitleSize(0.165)
     frame2.GetXaxis().SetTitleFont(42)
     frame2.GetYaxis().SetTitleFont(42)
     frame2.GetXaxis().SetTickLength(0.05)
     frame2.GetYaxis().SetTickLength(0.05)
-    frame2.GetXaxis().SetLabelSize(0.115)
-    frame2.GetYaxis().SetLabelSize(0.089)
+    frame2.GetXaxis().SetLabelSize(0.15)
+    frame2.GetYaxis().SetLabelSize(0.13)
     frame2.GetXaxis().SetLabelOffset(0.02)
     frame2.GetYaxis().SetLabelOffset(0.01)
-    frame2.GetYaxis().SetTitleOffset(0.42)
-    frame2.GetXaxis().SetTitleOffset(1.1)
-    frame2.GetYaxis().SetNdivisions(504)    
+    frame2.GetYaxis().SetTitleOffset(0.3)
+    frame2.GetXaxis().SetTitleOffset(0.8)
+    frame2.GetYaxis().SetNdivisions(504)
     frame2.GetYaxis().SetRangeUser(0.75,1.25)
     if 'BDT' in varname:
         dummy_ratio.GetXaxis().SetRangeUser(-1, 1)
@@ -324,8 +326,8 @@ postfitR = {}
 postfitR["ee"] = ['ch1','ch4','ch7','ch10']
 postfitR["emu"] = ['ch2','ch5','ch8','ch11']
 postfitR["mumu"] = ['ch3','ch6','ch9','ch12']
-#FitType = 'prefit'
-FitType = 'postfit'
+FitType = 'prefit'
+#FitType = 'postfit'
 
 colors =  [ROOT.kBlack,ROOT.kGreen,ROOT.kBlue-3,ROOT.kOrange-3,ROOT.kRed-4, ROOT.kGray+1,ROOT.kGray+3,]
 #colors =  [ROOT.kBlack,ROOT.kGreen,ROOT.kGreen,ROOT.kOrange-3,ROOT.kRed-4, ROOT.kOrange-6, ROOT.kCyan-6]

@@ -18,18 +18,25 @@ import gc
 from operator import truediv
 import copy
 TGaxis.SetMaxDigits(4)
+import random
 
 #bins = array( 'd',[-1,-0.6,-0.4,-0.25,-0.2,-0.15,-0.1,-0.05,0,0.05,0.1,0.15,0.2,0.25,0.35,0.6,0.8,1] )
 #bins = array( 'd',[-1,-0.6,-0.5,-0.3,-0.25,-0.2,-0.15,-0.1,-0.05,0,0.05,0.1,0.15,0.20,0.25,0.4,1] )
 #bins = array( 'd',[-1,-0.9,-0.8,-0.7,-0.6,-0.5,-0.4,-0.3,-0.2,-0.1,0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1] )
-bins = array( 'd',[-1,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.75,0.9,1] )
-
+#bins = array( 'd',[-1,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.75,0.9,1] )
+binsmll= array( 'd',[0,20,40,60,80,100,140,200,300,400,500,800,1200,2000] )
+bins = array( 'd',[-1,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,1] )
 leptonPTbins = array( 'd',[0,25,50,75,100,125,150,175, 200, 250, 300, 350, 400, 600, 800, 1100, 1500] )
 #bins = array( 'd',[-0.4,-0.25,-0.2,-0.15,-0.1,-0.05,0,0.05,0.1,0.15,0.2,0.25,0.35,0.6] )
 BDTmin=-1
 BDTmax=1
 Blinded=False
-
+col=[1,632,416,600,400,616,432,800,30,
+1,632,416,600,400,616,432,800,30
+]
+style=[1,1,1,1,1,1,1,1,1,
+2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+]
 def EFTtoNormal(H, wc):
     hpx    = ROOT.TH1F( H.GetName(), H.GetName(), H.GetXaxis().GetNbins(), H.GetXaxis().GetXmin(),H.GetXaxis().GetXmax() )
     r=1
@@ -139,6 +146,7 @@ def draw(hists, sys, ch = "channel", reg = "region", year='2016', var="sample", 
     gc.collect()
 
 def compareError(histsup,histsdown, sys, ch = "channel", reg = "region", year='2016', var="sample", varname="v", prefix = 'Theory'):
+    wc1 = ROOT.WCPoint("EFTrwgt1_cS_1_cT_1")
     if not os.path.exists('sys/'+year):
        os.makedirs('sys/'+ year)
     if not os.path.exists('sys/'+year + '/' + ch):
@@ -170,41 +178,25 @@ def compareError(histsup,histsdown, sys, ch = "channel", reg = "region", year='2
     pad2.cd()
     maxi=0
     for n,G in enumerate(histsup):
-        histsup[n].SetLineColor(n+1)
+        histsup[n].SetLineColor(col[n])
+        histsup[n].SetLineStyle(style[n])
         histsup[n].SetLineWidth(2)
         histsup[n].SetFillColor(0)
         legend.AddEntry(histsup[n],sys[n],'L')
-        if(histsup[n].GetMaximum()>maxi):
-            maxi=G.GetMaximum()
-        if (histsup[n].GetMaximum()>100):
+        for b in range(histsup[n].GetNbinsX()):
+            if(histsup[n].GetBinContent(b+1,wc1)>maxi):
+                maxi=histsup[n].GetBinContent(b+1,wc1)
+        if (maxi>100):
             print sys[n] + 'has large error:' + str(histsup[n].GetMaximum())+  year+ch+reg+var
-        histsdown[n].SetLineColor(n+1)
+        histsdown[n].SetLineColor(col[n])
+        histsdown[n].SetLineStyle(style[n])
         histsdown[n].SetFillColor(0)
         histsdown[n].SetLineWidth(2)
-        if n==4:
-            histsup[n].SetLineColor(ROOT.kOrange)
-            histsdown[n].SetLineColor(ROOT.kOrange)
-        if n==7:
-            histsup[n].SetLineColor(ROOT.kGreen-1)
-            histsdown[n].SetLineColor(ROOT.kGreen-1)
-        if n==8:
-            histsup[n].SetLineColor(28)
-            histsdown[n].SetLineColor(28)
-        if n==9:
-            histsup[n].SetLineColor(46)
-            histsdown[n].SetLineColor(46)
-        if n==10:
-            histsup[n].SetLineColor(30)
-            histsdown[n].SetLineColor(30)
-        if n==11:
-            histsup[n].SetLineColor(38)
-            histsdown[n].SetLineColor(38)
-        if n==12:
-            histsup[n].SetLineColor(17)
-            histsdown[n].SetLineColor(17)
         if 'BDT' in varname:
             histsup[n].GetXaxis().SetRangeUser(BDTmin, BDTmax)
             histsdown[n].GetXaxis().SetRangeUser(BDTmin, BDTmax)
+    if 'muonRes' in sys:
+        print 'maxi='+str(maxi)
     histsup[0].SetTitle( '' )
     histsup[0].GetYaxis().SetTitle( 'Uncertainty (%)' )
     histsup[0].GetXaxis().SetTitle(varname)
@@ -216,9 +208,11 @@ def compareError(histsup,histsdown, sys, ch = "channel", reg = "region", year='2
     histsup[0].GetYaxis().SetTitleOffset(1)
     histsup[0].GetYaxis().SetNdivisions(804)
     histsup[0].GetXaxis().SetNdivisions(808)   
-    histsup[0].GetYaxis().SetRangeUser(-1.4*maxi,2*maxi)
+    histsup[0].GetYaxis().SetRangeUser(-1.4*maxi,2.0*maxi)
     histsup[0].Draw('hist')
     for n,G in enumerate(histsup):
+        histsup[n].GetYaxis().SetRangeUser(-1.4*maxi,2.0*maxi)
+        histsdown[n].GetYaxis().SetRangeUser(-1.4*maxi,2.0*maxi)
         histsup[n].Draw('samehist')
         histsdown[n].Draw('samehist')
     histsup[0].Draw('samehist')
@@ -482,30 +476,33 @@ def stackPlotsError(hists, SignalHists,error, errorRatio, Fnames, ch = "channel"
 
 #year=['2016','2017','2018','All']
 year=['2016preVFP', '2016postVFP', '2017','2018', 'All']
-#year=['2017']
+#year=['2018']
 LumiErr = [0.038, 0.038, 0.038, 0.038, 0.038]
 #regions=["ll","llOffZ","llB1", "llBg1"]
 regions=["ll","llOffZ","llB1", "llBg1"]
 regionsName=["1 b-tag", "$>$ 1 b-tag"]
 channels=["ee", "emu", "mumu", "ll"];
 variables=["lep1Pt","lep1Eta","lep1Phi","lep2Pt","lep2Eta","lep2Phi","llM","llPt","llDr","llDphi","jet1Pt","jet1Eta","jet1Phi","njet","nbjet","Met","MetPhi","nVtx","llMZw", "topMass","topL1Dphi","topL1Dr","topL1DptOsumPt","topPt", "BDT"]
-#variables=["BDT"]
+variables=["BDT"]
 variablesName=["p_{T}(leading lepton)","#eta(leading lepton)","#Phi(leading lepton)","p_{T}(sub-leading lepton)","#eta(sub-leading lepton)","#Phi(sub-leading lepton)","M(ll)","p_{T}(ll)","#Delta R(ll)","#Delta #Phi(ll)","p_{T}(leading jet)","#eta(leading jet)","#Phi(leading jet)","Number of jets","Number of b-tagged jets","MET","#Phi(MET)","Number of vertices", "M(ll) [z window]", "top mass", "#Delta #Phi(ll, top)", "#Delta R(ll, top)", "|pt_top - pt_l1|/(pt_top + pt_l1)", "p_{T}(top)", "BDT"]
-#variablesName=["BDT"]
-sys = ["eleRecoSf", "eleIDSf", "muIdIsoSf", "bcTagSf", "LTagSf","pu", "prefiring", "trigSF","jes", "jer","muonScale","electronScale","muonRes", "unclusMET", "bcTagSfUnCorr", "LTagSfUnCorr","JetPuID"]
+variablesName=["BDT"]
+sys = ["eleRecoSf", "eleIDSf", "muIdIsoSf", "bcTagSf", "LTagSf","pu", "prefiring", "trigSF","jes", "jer","muonScale","electronScale","muonRes", "unclusMET", "bcTagSfUnCorr", "LTagSfUnCorr","JetPuID","topPt"]
+#sys = ["topPt"]
 #sys = ["muonScale","electronScale","muonRes", "unclusMET"]
 
 #sys = ["jes", "jer","muonScale","electronScale","muonRes", "unclusMET","JetPuID"]
 #sys = ["eleRecoSf", "eleIDSf", "muIdSf", "muIsoSf", "bcTagSF", "udsgTagSF","pu", "prefiring", "trigSF", "jes", "jer","electronScale"]
-#sys = ["trigSF","eleRecoSf", "eleIDSf", "muIdSf", "muIsoSf", "unclusMET","muonScale","electronScale","muonRes"]
+#sys = ["trigSF","eleRecoSf", "eleIDSf", "muIdIsoSf", "muonScale","electronScale","muonRes"]
+#HistAddress = '/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/hists/'
 HistAddress = '/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/hists/'
-
 #Samples = ['data.root','WJetsToLNu.root','others.root', 'DY.root', 'TTTo2L2Nu.root', 'ST_tW.root', 'LFVVecC.root', 'LFVVecU.root']
 #SamplesName = ['Data','Jets','Others', 'DY', 't#bar{t}', 'tW' , 'LFV-vec [c_{e#mutc}] #times 100', 'LFV-vec [c_{e#mutu}] #times 10']
 Samples = ['data.root','other.root', 'DY.root', 'tW.root', 'ttbar.root', 'STBNV_TDUE.root', 'STBNV_TDUMu.root']
 SamplesName = ['Data','Other', 'DY', 'tW','t#bar{t}', 'BNV tdue', 'BNV tdu#mu']
 SamplesNameLatex = ['Data','Others', 'DY', 'tt', 'tW',  'LFV-vector(emutc)', 'LFV-vector(emutu)']
 NormalizationErr = [0, 0.5, 0.3, 0.1, 0.05, 0,0]
+SFDY={'2018ee': 1.1699391121490363, '2017emu': 1.1713108018783276, '2016preVFPee': 1.2223736608057711, '2017mumu': 1.221433234374281, '2016postVFPemu': 1.4645112843940724, 'Allmumu': 1.298251117741197, 'Allemu': 1.2359358243739242, '2016preVFPmumu': 1.0607230779180583, 'Allee': 1.1766116285950792, '2016postVFPmumu': 1.440054040889115, '2016postVFPee': 1.4893838989496129, '2016preVFPemu': 1.1386834291653947, '2018mumu': 1.3808182458545915, '2017ee': 1.1232451811413882, '2018emu': 1.2710126956857317}
+
 
 colors =  [ROOT.kBlack,ROOT.kGreen,ROOT.kBlue-3,ROOT.kOrange-3,ROOT.kRed-4, ROOT.kGray+1,ROOT.kGray+3,
 ]
@@ -543,39 +540,55 @@ for numyear, nameyear in enumerate(year):
                     h= Files[f].Get(namech + '_' + namereg + '_' + namevar)
                     if 'BNV' in Samples[f]:
                         h.Scale(wc1)
+#                    if "DY" in Samples[f] and 'B1' in namereg and 'll' not in namech and '-' not in namereg:
+#                        h.Scale(SFDY[nameyear+namech])
                     h.SetFillColor(colors[f])
                     h.SetLineColor(colors[f])
-                    h.SetBinContent(h.GetXaxis().GetNbins(), h.GetBinContent(h.GetXaxis().GetNbins(),wc1) + h.GetBinContent(h.GetXaxis().GetNbins()+1,wc1))
+                    if 'llMZw' not in namevar:
+                        h.SetBinContent(h.GetXaxis().GetNbins(), h.GetBinContent(h.GetXaxis().GetNbins(),wc1) + h.GetBinContent(h.GetXaxis().GetNbins()+1,wc1))
                     if 'BDT' in namevar:
                         h=h.Rebin(len(bins)-1,"",bins)
                     if 'lep1Pt' in namevar:
                         h=h.Rebin(len(leptonPTbins)-1,"",leptonPTbins)
+                    if 'llM'== namevar:
+                        h=h.Rebin(len(binsmll)-1,"",binsmll)
                     l3.append(h)
                     copyl3.append(h.Clone())
                     for numsys, namesys in enumerate(sys):
                         if 'data' in Samples[f]:
                             continue
                         h= Files[f].Get('sys' + namech + '/' + namech + '_' + namereg + '_' + namevar+ '_' + namesys+ '_Up')
+#                        print nameyear+ '_' +Samples[f]+'_sys' + namech + '/' + namech + '_' + namereg + '_' + namevar+ '_' + namesys+ '_Up'
                         if 'BNV' in Samples[f]:
                             h.Scale(wc1)
+#                        if "DY" in Samples[f] and 'B1' in namereg and 'll' not in namech and '-' not in namereg:
+#                            h.Scale(SFDY[nameyear+namech])
                         h.SetFillColor(colors[f])
                         h.SetLineColor(colors[f])
-                        h.SetBinContent(h.GetXaxis().GetNbins(), h.GetBinContent(h.GetXaxis().GetNbins(),wc1) + h.GetBinContent(h.GetXaxis().GetNbins()+1,wc1))
+                        if 'llMZw' not in namevar:
+                            h.SetBinContent(h.GetXaxis().GetNbins(), h.GetBinContent(h.GetXaxis().GetNbins(),wc1) + h.GetBinContent(h.GetXaxis().GetNbins()+1,wc1))
                         if 'BDT' in namevar:
                             h=h.Rebin(len(bins)-1,"",bins)
                         if 'lep1Pt' in namevar:
                             h=h.Rebin(len(leptonPTbins)-1,"",leptonPTbins)
+                        if 'llM'== namevar:
+                            h=h.Rebin(len(binsmll)-1,"",binsmll)
                         SysUpl4.append(h)
                         h= Files[f].Get('sys' + namech + '/' + namech + '_' + namereg + '_' + namevar+ '_' + namesys+ '_Down')
                         if 'BNV' in Samples[f]:
                             h.Scale(wc1)
+#                        if "DY" in Samples[f] and 'B1' in namereg and 'll' not in namech and '-' not in namereg:
+#                            h.Scale(SFDY[nameyear+namech])
                         h.SetFillColor(colors[f])
                         h.SetLineColor(colors[f])
-                        h.SetBinContent(h.GetXaxis().GetNbins(), h.GetBinContent(h.GetXaxis().GetNbins(),wc1) + h.GetBinContent(h.GetXaxis().GetNbins()+1,wc1))
+                        if 'llMZw' not in namevar:
+                            h.SetBinContent(h.GetXaxis().GetNbins(), h.GetBinContent(h.GetXaxis().GetNbins(),wc1) + h.GetBinContent(h.GetXaxis().GetNbins()+1,wc1))
                         if 'BDT' in namevar:
                             h=h.Rebin(len(bins)-1,"",bins)
                         if 'lep1Pt' in namevar:
                             h=h.Rebin(len(leptonPTbins)-1,"",leptonPTbins)
+                        if 'llM'== namevar:
+                            h=h.Rebin(len(binsmll)-1,"",binsmll)
                         SysDownl4.append(h)
                     SysUpl3.append(SysUpl4)
                     SysDownl3.append(SysDownl4)
@@ -833,7 +846,6 @@ Gttsys.append(CRGraph)
 Gttsys.append(TuneGraph)
 Gttsys.append(hdampGraph)
 ttSys = ['pdf','QS','ISR','FSR','CR','Tune','hdamp']
-
 for numyear, nameyear in enumerate(year):
     for numch, namech in enumerate(channels):
         for numreg, namereg in enumerate(regions):
@@ -974,16 +986,31 @@ for numyear, nameyear in enumerate(year):
                     else:
                         HH.append(Hists[numyear][f][numch][numreg][numvar])
                 stackPlotsError(HH, HHsignal,tgraph_nominal[numyear][numch][numreg][numvar], tgraph_ratio[numyear][numch][numreg][numvar],SamplesName, namech, namereg, nameyear,namevar,variablesName[numvar])
+#                print nameyear+'_'+namech+'_'+namereg+'_'+namevar+'= '+ str(Hists[numyear][2][numch][numreg][numvar].Integral())
+
+#sysSep = ["eleRecoSf", "eleIDSf", "muIdIsoSf", "bcTagSf", "LTagSf","pu", "prefiring", "trigSF","jes", "jer"]
+sysSep = ["trigSF","eleRecoSf", "eleIDSf", "muIdIsoSf", "muonScale","electronScale","muonRes"]
 
 for numyear, nameyear in enumerate(year):
     for numch, namech in enumerate(channels):
         for numreg, namereg in enumerate(regions):
             for numvar, namevar in enumerate(variables):
-                glistup = []
-                glistdown = []
+                glistup0 = []
+                glistdown0 = []
+                list0 = []
+                glistup1 = []
+                glistdown1 = []
+                list1 = []
+                glistup2 = []
+                glistdown2 = []
+                list2 = []                  
                 for numsys2, namesys2 in enumerate(sys):
                     hup = HistsSysUp[numyear][len(Samples)-3][numch][numreg][numvar][numsys2].Clone()
                     hdown = HistsSysDown[numyear][len(Samples)-3][numch][numreg][numvar][numsys2].Clone()
+#                    if namevar=='Met' and namesys2=='unclusMET':
+#                        print namech+'_'+namereg+'_'+nameyear+'_'+namevar+'_'+namesys2+'UP:'+str(hup.Integral())+" Nom="+str(Hists_copy[numyear][len(Samples)-3][numch][numreg][numvar].Integral())+' Down:'+str(hdown.Integral())
+#                    if namevar=='Met' and namesys2=='Jer':
+#                        print namech+'_'+namereg+'_'+nameyear+'_'+namevar+'_'+namesys2+'UP:'+str(hup.Integral())+" Nom="+str(Hists_copy[numyear][len(Samples)-3][numch][numreg][numvar].Integral())+' Down:'+str(hdown.Integral())
                     if hup.Integral()>0 or hdown.Integral()>0:
                         for b in range(hup.GetNbinsX()):
                             cv = Hists_copy[numyear][len(Samples)-3][numch][numreg][numvar].GetBinContent(b+1,wc1)
@@ -992,10 +1019,21 @@ for numyear, nameyear in enumerate(year):
                                 rb = 100/cv
                             hup.SetBinContent(b+1, 0 + abs(max((HistsSysUp[numyear][len(Samples)-3][numch][numreg][numvar][numsys2].GetBinContent(b+1,wc1)-cv)*rb, (HistsSysDown[numyear][len(Samples)-3][numch][numreg][numvar][numsys2].GetBinContent(b+1,wc1)-cv)*rb,0)))
                             hdown.SetBinContent(b+1, 0 - abs(min((HistsSysUp[numyear][len(Samples)-3][numch][numreg][numvar][numsys2].GetBinContent(b+1,wc1)-cv)*rb, (HistsSysDown[numyear][len(Samples)-3][numch][numreg][numvar][numsys2].GetBinContent(b+1,wc1)-cv)*rb,0)))
-                    glistup.append(hup)
-                    glistdown.append(hdown)
-                compareError(glistup,glistdown, sys, namech, namereg, nameyear,namevar,variablesName[numvar], 'Exp')
+                    glistup0.append(hup)
+                    glistdown0.append(hdown)
+                    list0.append(namesys2)
+                    if namesys2 in sysSep:
+                        glistup1.append(hup)
+                        glistdown1.append(hdown)
+                        list1.append(namesys2)
+                    else:
+                        glistup2.append(hup)
+                        glistdown2.append(hdown)
+                        list2.append(namesys2)
+                compareError(glistup0,glistdown0, list0, namech, namereg, nameyear,namevar,variablesName[numvar], 'Exp')
+                compareError(glistup1,glistdown1, list1, namech, namereg, nameyear,namevar,variablesName[numvar], 'Exp1')
+                compareError(glistup2,glistdown2, list2, namech, namereg, nameyear,namevar,variablesName[numvar], 'Exp2')
 
-
+os.system('tar -cvf sys.tar sys')
 
 

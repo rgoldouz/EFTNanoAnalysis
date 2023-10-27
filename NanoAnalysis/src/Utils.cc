@@ -2,6 +2,28 @@
 #include "sys/types.h"
 #include "sys/sysinfo.h"
 
+float GetGraphYError(const  TGraphAsymmErrors* graph, Double_t xValue) {
+  Double_t minDist = 2500;
+  Int_t closestIndex = -1;
+
+  // Iterate over all points in the graph
+  for (Int_t i = 0; i < graph->GetN(); ++i) {
+    Double_t x, y;
+    graph->GetPoint(i, x, y);
+
+    // Calculate the distance between the current x-value and the desired x-value
+    Double_t dist = TMath::Abs(x - xValue);
+
+    // Update the closest index if a closer point is found
+    if (dist < minDist) {
+      minDist = dist;
+      closestIndex = i;
+    }
+  }
+  return (graph->GetErrorYhigh(closestIndex)+graph->GetErrorYlow(closestIndex))/2.0;
+}
+
+
 double dR(double eta1, double phi1, double eta2, double phi2){
     double dphi = phi2 - phi1;
     double deta = eta2 - eta1;
@@ -142,6 +164,19 @@ float scale_factor( TH2F* h, float X, float Y , TString uncert, bool eff=false, 
   if(uncert=="up") return (h->GetBinContent(binx, biny)+h->GetBinError(binx, biny));
   if(uncert=="down") return (h->GetBinContent(binx, biny)-h->GetBinError(binx, biny));
   if(uncert=="central") return  h->GetBinContent(binx, biny);
+}
+
+float scale_factor1D( TH1F* h, float X, TString uncert){
+  int NbinsX=h->GetXaxis()->GetNbins();
+  float x_min=h->GetXaxis()->GetBinLowEdge(1);
+  float x_max=h->GetXaxis()->GetBinLowEdge(NbinsX)+h->GetXaxis()->GetBinWidth(NbinsX);
+  TAxis *Xaxis = h->GetXaxis();
+  Int_t binx=1;
+  if(x_min < X && X < x_max) binx = Xaxis->FindBin(X);
+  else binx= (X<=x_min) ? 1 : NbinsX ;
+  if(uncert=="up") return (h->GetBinContent(binx)+h->GetBinError(binx));
+  else if (uncert=="down") return (h->GetBinContent(binx)-h->GetBinError(binx));
+  else return  h->GetBinContent(binx);
 }
 
 float topPt(float pt){

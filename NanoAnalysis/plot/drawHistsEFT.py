@@ -16,7 +16,9 @@ from ROOT import THStack
 import gc
 TGaxis.SetMaxDigits(2)
 
+bins = array( 'd',[-1,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.55,0.70,0.85,1] )
 bins = array( 'd',[-1,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.75,0.9,1] )
+bins = array( 'd',[-1,-0.8,-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6,0.8,1] )
 binsmll= array( 'd',[0,20,40,60,80,100,140,200,300,400,500,800,1200,2000] )
 binsptl = array( 'd',[0,40,80,100,150,200,300,400,500,1000,1500] )
 colors =  [ROOT.kBlack,ROOT.kYellow,ROOT.kGreen,ROOT.kBlue-3,ROOT.kRed-4,ROOT.kOrange-3, ROOT.kPink, ROOT.kViolet-1,ROOT.kViolet+8,ROOT.kRed-5,ROOT.kSpring-1,ROOT.kGray+3]
@@ -237,13 +239,28 @@ def stackPlots(hists, SignalHists, Fnames, ch = "channel", reg = "region", year=
     dummy_ratio.GetYaxis().SetTitleOffset(0.42)
     dummy_ratio.GetXaxis().SetTitleOffset(1.1)
     dummy_ratio.GetYaxis().SetNdivisions(504)    
-    dummy_ratio.GetYaxis().SetRangeUser(0.6,1.4)
+    dummy_ratio.GetYaxis().SetRangeUser(0.5,2)
+    if 'BDT' in varname:
+        dummy_ratio.GetYaxis().SetRangeUser(0.8,1.2)
     dummy_ratio.Divide(SumofMC)
-    dummy_ratio.SetStats(ROOT.kFALSE)
+#    dummy_ratio.SetStats(ROOT.kFALSE)
     dummy_ratio.GetYaxis().SetTitle('Data/Pred.')
     dummy_ratio.Draw("AXISSAMEY+")
     dummy_ratio.Draw("AXISSAMEX+")
     dummy_ratio.Draw()
+    SumofMC = hists[1].Clone()
+    for num in range(2,len(hists)):
+        SumofMC.Add(hists[num])
+    SumofMC.SetFillColor(13)
+    SumofMC.SetLineColor(13)
+    SumofMC.SetFillStyle(3244)
+    errorRatio=SumofMC.Clone()
+    errorRatio.Divide(errorRatio)
+    errorRatio.SetFillColor(1)
+    errorRatio.SetLineColor(13)
+    errorRatio.SetFillStyle(3004)    
+    errorRatio.Draw("e2same")
+    dummy_ratio.Draw("same")    
     canvas.Print(year + '/' + ch +'/'+reg+'/'+var + ".png")
     del canvas
     gc.collect()
@@ -251,26 +268,31 @@ def stackPlots(hists, SignalHists, Fnames, ch = "channel", reg = "region", year=
 
 #year=['2016','2017','2018','All']
 year=['2016preVFP', '2016postVFP', '2017','2018','All']
-year=['2017']
+year=['2018']
 regions=["ll","llOffZ","llB1", "llBg1"]
 #regions=["ll","llOffZ"]
-regions=["ll","llOffZ","llB1", "llBg1","llB1InZ","llB1-BDTm1to0", "llB1-BDT0to0p8", "llB1-BDT0p8to1"]
-regionsName=["ll","llOffZ","llB1", "llBg1"]
-regionsName=["ll","llOffZ","llB1", "llBg1","llB1InZ","llB1-BDTm1to0", "llB1-BDT0to0p8", "llB1-BDT0p8to1"]
+regions=["ll","llOffZ","llB1", "llBg1"]#,"llB1InZ","llB1-BDTm1to0", "llB1-BDT0to0p8", "llB1-BDT0p8to1","llptl1G300", "llB1ptl1G300",   "ll-BB",    "ll-BE",    "ll-EE", "ll-leadMuP", "ll-leadMuN"]
+#regions=["llB1InZ"]
+regionsName=["ll","llOffZ","llB1", "llBg1"]#,"llB1InZ","llB1-BDTm1to0", "llB1-BDT0to0p8", "llB1-BDT0p8to1","llptl1G300", "llB1ptl1G300",  "ll-BB",    "ll-BE",    "ll-EE", "ll-leadMuP", "ll-leadMuN"]
 channels=["ee", "emu", "mumu","ll"];
 
-variables=["lep1Pt","lep1Eta","lep1Phi","lep2Pt","lep2Eta","lep2Phi","llM","llPt","llDr","llDphi","jet1Pt","jet1Eta","jet1Phi","njet","nbjet","Met","MetPhi","nVtx","llMZw", "topMass","topL1Dphi","topL1Dr","topL1DptOsumPt","topPt", "BDT"]
-#variables=["lep1Pt"]
-variablesName=["p_{T}(leading lepton)","#eta(leading lepton)","#Phi(leading lepton)","p_{T}(sub-leading lepton)","#eta(sub-leading lepton)","#Phi(sub-leading lepton)","M(ll)","p_{T}(ll)","#Delta R(ll)","#Delta #Phi(ll)","p_{T}(leading jet)","#eta(leading jet)","#Phi(leading jet)","Number of jets","Number of b-tagged jets","MET","#Phi(MET)","Number of vertices", "M(ll) [z window]", "top mass", "#Delta #Phi(ll, top)", "#Delta R(ll, top)", "|pt_top - pt_l1|/(pt_top + pt_l1)", "p_{T}(top)", "BDT"]
-
+variables=["lep1Pt","lep1Eta","lep1Phi","lep2Pt","lep2Eta","lep2Phi","llM","llPt","llDr","llDphi","jet1Pt","jet1Eta","jet1Phi","njet","nbjet","Met","MetPhi","nVtx","llMZw", "topMass","topL1Dphi","topL1Dr","topL1DptOsumPt","topPt", "BDT"]#,"leadElePt","leadEleEta","leadElePhi","leadMuPt",  "leadMuEta", "leadMuPhi","mu1bDr",       "mu2bDr",       "mu1jDrMin",    "mu2jDrMin",    "PtRelMu1jet",  "PtRelMu2jet",  "ele1bDr",      "ele2bDr",      "ele1jDrMin",   "ele2jDrMin",   "PtRelEle1jet", "PtRelEle2jet"]#,"llMZwPt0to100","llMZwPt100to200","llMZwPt200to350","llMZwPt350toInf"]#
+variables=["llM","BDT"]
+variablesName=["p_{T}(leading lepton)","#eta(leading lepton)","#Phi(leading lepton)","p_{T}(sub-leading lepton)","#eta(sub-leading lepton)","#Phi(sub-leading lepton)","M(ll)","p_{T}(ll)","#Delta R(ll)","#Delta #Phi(ll)","p_{T}(leading jet)","#eta(leading jet)","#Phi(leading jet)","Number of jets","Number of b-tagged jets","MET","#Phi(MET)","Number of vertices", "M(ll) [z window]", "top mass", "#Delta #Phi(ll, top)", "#Delta R(ll, top)", "|pt_top - pt_l1|/(pt_top + pt_l1)", "p_{T}(top)", "BDT","leadElePt","leadEleEta","leadElePhi","leadMuPt",  "leadMuEta", "leadMuPhi",
+"mu1bDr",       "mu2bDr",       "mu1jDrMin",    "mu2jDrMin",    "PtRelMu1jet",  "PtRelMu2jet",  "ele1bDr",      "ele2bDr",      "ele1jDrMin",   "ele2jDrMin",   "PtRelEle1jet", "PtRelEle2jet"]#,"llMZwPt0to100","llMZwPt100to200","llMZwPt200to350","llMZwPt350toInf"]
+variablesName=["llM","BDT"]
 HistAddress = '/afs/crc.nd.edu/user/r/rgoldouz/BNV/NanoAnalysis/hists/'
 
-SFDY={'2018ee': 1.1365510987619387, '2017emu': 1.3261806003138998, '2016preVFPee': 1.1633451628199767, '2017mumu': 1.3465242028877409, '2016postVFPemu': 1.462616384646022, 'Allmumu': 1.2578307798620003, 'Allemu': 1.2367413449370244, '2016preVFPmumu': 1.1158537954764174, 'Allee': 1.216005506276805, '2016postVFPmumu': 1.528904852150822, '2016postVFPee': 1.3992019749466855, '2016preVFPemu': 1.1393520594538817, '2018mumu': 1.183191225338832, '2017ee': 1.3061443536455783, '2018emu': 1.15963670483662}
+
+#{'2018ee': 1.138521042076288, '2017emu': 1.3261253697472475, '2016preVFPee': 1.1669105550937087, '2017mumu': 1.3442823492649438, '2016postVFPemu': 1.462483170835793, 'Allmumu': 1.255328224389967, 'Allemu': 1.2366488112328748, '2016preVFPmumu': 1.1121532788371327, 'Allee': 1.2182473496657449, '2016postVFPmumu': 1.5249467869094302, '2016postVFPee': 1.4025781380297742, '2016preVFPemu': 1.139202966971701, '2018mumu': 1.1809180192474082, '2017ee': 1.3082136332808982, '2018emu': 1.159525771115168}
+#SFDY={'2018ee': 1.1365510987619387, '2017emu': 1.3261806003138998, '2016preVFPee': 1.1633451628199767, '2017mumu': 1.3465242028877409, '2016postVFPemu': 1.462616384646022, 'Allmumu': 1.2578307798620003, 'Allemu': 1.2367413449370244, '2016preVFPmumu': 1.1158537954764174, 'Allee': 1.216005506276805, '2016postVFPmumu': 1.528904852150822, '2016postVFPee': 1.3992019749466855, '2016preVFPemu': 1.1393520594538817, '2018mumu': 1.183191225338832, '2017ee': 1.3061443536455783, '2018emu': 1.15963670483662}
+
+SFDY={'2018ee': 1.1699391121490363, '2017emu': 1.1713108018783276, '2016preVFPee': 1.2223736608057711, '2017mumu': 1.221433234374281, '2016postVFPemu': 1.4645112843940724, 'Allmumu': 1.298251117741197, 'Allemu': 1.2359358243739242, '2016preVFPmumu': 1.0607230779180583, 'Allee': 1.1766116285950792, '2016postVFPmumu': 1.440054040889115, '2016postVFPee': 1.4893838989496129, '2016preVFPemu': 1.1386834291653947, '2018mumu': 1.3808182458545915, '2017ee': 1.1232451811413882, '2018emu': 1.2710126956857317}
 
 Samples = ['data.root','WJets.root','other.root', 'DY.root', 'ttbar.root', 'tW.root', 'BNV_ST_TBCE.root', 'BNV_ST_TBUE.root' , 'BNV_ST_TDCE.root',  'BNV_ST_TDUE.root',  'BNV_ST_TSCE.root',  'BNV_ST_TSUE.root']
-Samples = ['data.root','WJets.root','other.root', 'DY.root', 'ttbar.root', 'tW.root']
-SamplesName = ['Data','Jets','Others', 'DY', 't#bar{t}', 'tW']# , 'BNV_ST_TBCE', 'BNV_ST_TBUE', 'BNV_ST_TDCE',  'BNV_ST_TDUE',  'BNV_ST_TSCE',  'BNV_ST_TSUE']
-SamplesNameLatex = ['Data','Jets','Others', 'DY', 'tt', 'tW']#,  'LFV-vector(emutc)', 'LFV-vector(emutu)']
+Samples = ['data.root','WJets.root','other.root', 'DY.root', 'ttbar.root', 'tW.root', 'STBNV_TDUE.root', 'STBNV_TDUMu.root']
+SamplesName = ['Data','Jets','Others', 'DY', 't#bar{t}', 'tW','BNV tdue', 'BNV tdu#mu']# , 'BNV_ST_TBCE', 'BNV_ST_TBUE', 'BNV_ST_TDCE',  'BNV_ST_TDUE',  'BNV_ST_TSCE',  'BNV_ST_TSUE']
+SamplesNameLatex = ['Data','Jets','Others', 'DY', 'tt', 'tW', 'BNV tdue', 'BNV tdu#mu']#,  'LFV-vector(emutc)', 'LFV-vector(emutu)']
 
 colors =  [ROOT.kBlack,ROOT.kYellow,ROOT.kGreen,ROOT.kBlue-3,ROOT.kRed-4,ROOT.kOrange-3, ROOT.kPink, ROOT.kViolet-1,ROOT.kViolet+8,ROOT.kRed-5,ROOT.kSpring-1,ROOT.kGray+3]
 wc1 = ROOT.WCPoint("EFTrwgt1_cS_1_cT_1")
@@ -288,6 +310,7 @@ for numyear, nameyear in enumerate(year):
             for numreg, namereg in enumerate(regions):
                 l3=[]
                 for numvar, namevar in enumerate(variables):
+#                    print namech + '_' + namereg + '_' + namevar
                     h= Files[f].Get(namech + '_' + namereg + '_' + namevar)
                     h = TH1EFTtoTH1(h,wc1)
                     if 'BDT' in namevar:
@@ -296,7 +319,7 @@ for numyear, nameyear in enumerate(year):
                         h=h.Rebin(len(binsmll)-1,"",binsmll)
                     if 'lep1Pt'== namevar or 'lep2Pt'== namevar:
                         h=h.Rebin(len(binsptl)-1,"",binsptl)
-                    if "DY" in Samples[f] and 'B1' in namereg and 'll' not in namech:
+                    if "DY" in Samples[f] and 'B1' in namereg and 'll' not in namech and '-' not in namereg:
                         h.Scale(SFDY[nameyear+namech])
 #                    print namevar + ":" + str(h.Integral())
 #                    if 'njet' in namevar:
@@ -320,13 +343,18 @@ for numyear, nameyear in enumerate(year):
                     if 'BNV' in Samples[f]:
                         text = 'EFTrwgt1_cS_20_cT_20'
                         wc1 = ROOT.WCPoint(text)
-                        Hists[numyear][f][numch][numreg][numvar].Scale(wc1)
+#                        Hists[numyear][f][numch][numreg][numvar].Scale(wc1)
                         HHsignal.append(Hists[numyear][f][numch][numreg][numvar])
                     else:
                         Hists[numyear][f][numch][numreg][numvar]
                         HH.append(Hists[numyear][f][numch][numreg][numvar])
                 stackPlots(HH, HHsignal, SamplesName, namech, namereg, nameyear,namevar,variablesName[numvar])
+#                print nameyear+'_'+namech+'_'+namereg+'_'+namevar+'= '+ str(Hists[numyear][3][numch][numreg][numvar].Integral())
     os.system('tar -cvf '+ nameyear +'.tar ' + nameyear)
+
+#A=Hists[0][7][2][regions.index('llB1-BDT0p8to1')][variables.index('BDT')].Integral()
+#B=Hists[0][7][2][regions.index('llB1-BDT0p8to1')][variables.index('l2jDrMin')].Integral()
+#print str(B/(A+B))
 
 le = '\\documentclass{article}' + "\n"
 le += '\\usepackage{rotating}' + "\n"

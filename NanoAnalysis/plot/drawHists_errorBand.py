@@ -372,7 +372,7 @@ channels=["ee", "emu", "mumu"];
 variables=["BDT"]
 variablesName=["BDT"]
 variablesName=["p_{T}(leading lepton)","#eta(leading lepton)","#Phi(leading lepton)","p_{T}(sub-leading lepton)","#eta(sub-leading lepton)","#Phi(sub-leading lepton)","M(ll)","p_{T}(ll)","#Delta R(ll)","#Delta #Phi(ll)","p_{T}(leading jet)","#eta(leading jet)","#Phi(leading jet)","Number of jets","Number of b-tagged jets","MET","#Phi(MET)","Number of vertices", "M(ll) [z window]", "BDT output", "p_{T}(muon)","p_{T}(electron)","#eta(muon)","#eta(electron)"]
-sys = ["eleRecoSf", "eleIDSf", "muIdSf", "muIsoSf", "bcTagSF", "udsgTagSF","pu", "prefiring", "trigSF", "jes", "jer", "unclusMET","muonScale","electronScale","muonRes"]
+sys = ["eleRecoSf", "eleIDSf", "muIdSf", "muIsoSf", "bcTagSF", "udsgTagSF","pu", "prefiring", "trigSF", "jes", "jer", "unclusMET","muonScale","electronScale","muonRes","topPt"]
 #sys = ["trigSF","eleRecoSf", "eleIDSf", "muIdSf", "muIsoSf", "unclusMET","muonScale","electronScale","muonRes"]
 
 HistAddress = '/user/rgoldouz/NewAnalysis2020/Analysis/hists/'

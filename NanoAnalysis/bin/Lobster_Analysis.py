@@ -54,24 +54,25 @@ storage = StorageConfiguration(
 gs_resources = Category(
     name='gs',
     cores=1,
-    memory=3900,
-    disk=3900,
+    memory=7900,
+    disk=7900,
 )
 
 gsLL_resources = Category(
-    name='gs',
-    cores=1,
-    memory=3900,
-    disk=3900,
+    name='gsLL',
+    cores=2,
+    memory=15900,
+    disk=15900,
+    runtime=9000,
     mode='fixed'
 )
 
 #################################################################
 wf = []
 for key, value in SAMPLES.items():
-#    cat = gs_resources
-#    if 'TT' in key or 'DY' in key:
     cat = gsLL_resources
+    if 'TT' in key or 'DY' in key or 'BNV' in key:
+        cat = gsLL_resources
     if path.exists('/hadoop/store/user/rgoldouz/FullProduction/AnalysisTOPBNV/Analysis_' + key) and len(os.listdir('/hadoop/store/user/rgoldouz/FullProduction/AnalysisTOPBNV/Analysis_' + key))>0:
         continue
     if path.exists('/hadoop/store/user/rgoldouz/FullProduction/AnalysisTOPBNV/Analysis_' + key):

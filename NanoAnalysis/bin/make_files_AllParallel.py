@@ -108,7 +108,7 @@ if __name__ == '__main__':
     'ZZpythia': '16.523'
     }
     
-    blackList = ['ST_antitop_tchannel','ST_top_tchannel', 'ST_top_schannel', 'TTJets','fcnc', 'tbarW_Inclusive', 'tW_Inclusive', 'FCNC', 'WZTo', 'WWTo', 'ZZTo', 'TTG','DY50madgraphMLM','DY50amcAtNLO']
+    blackList = ['ST_antitop_tchannel','ST_top_tchannel', 'ST_top_schannel', 'TTJets','fcnc', 'tbarW_Inclusive', 'tW_Inclusive', 'FCNC', 'WZTo', 'WWTo', 'ZZTo', 'TTG','DY50madgraphMLM','DY50amcAtNLO','MuonEG','DoubleMuon']
     
     text = ''
     text += 'import sys \n'
